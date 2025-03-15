@@ -31,11 +31,12 @@ export default function Home() {
   };
 
   useEffect(() => {
+    console.log('Use effect Triggered');
     if (!reference) return;
-
+    console.log('Reference is set: ', reference.toBase58());
     (async () => {
       try {
-        await waitForPayment(reference, connection);
+        await waitForPayment(reference, connection, wallet.publicKey!, amount);
         toast.success("Payment received! Updating loyalty points...");
         setStatus("Payment received! Updating blockchain...");
         processLoyaltyUpdate();

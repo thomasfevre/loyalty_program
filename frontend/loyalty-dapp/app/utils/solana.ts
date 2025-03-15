@@ -27,12 +27,12 @@ export const generateSolanaPayURL = (merchant: PublicKey, amount: number, refere
   });
 };
 
-export const waitForPayment = async (reference: PublicKey, connection: Connection) => {
+export const waitForPayment = async (reference: PublicKey, connection: Connection, RecipientPublicKey: PublicKey, amount: number) => {
   console.log("Waiting for payment...");
   const signatureInfo = await findReference(connection, reference, { finality: "confirmed" });
   return validateTransfer(connection, signatureInfo.signature, {
-    recipient: new PublicKey("RecipientPublicKeyHere"), // Replace with actual recipient public key
-    amount: new BigNumber(1), // Replace with actual amount and convert to BigNumber
+    recipient: RecipientPublicKey, // Replace with actual recipient public key
+    amount: new BigNumber(amount), // Replace with actual amount and convert to BigNumber
     reference: [reference] // Use the reference passed to the function
   });
 };
