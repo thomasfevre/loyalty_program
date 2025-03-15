@@ -2,9 +2,9 @@ import { PublicKey, Transaction, Connection, LAMPORTS_PER_SOL } from "@solana/we
 import { encodeURL, findReference, validateTransfer } from "@solana/pay";
 import { Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
 import BigNumber from "bignumber.js";
-import idl from "../idl/loyalty_program.json"; // Ensure IDL is in place
+import idl from "./idl.json"; // Ensure IDL is in place
 
-const PROGRAM_ID = new PublicKey(idl.metadata.address);
+const PROGRAM_ID = new PublicKey("4TuyQzPMELkUEmsqg1K5yxTyrzXpekDXw6HZnDZTRhxi");
 const NETWORK = "https://api.devnet.solana.com"; // Change to mainnet-beta if needed
 
 export const getProvider = (wallet: any) => {
@@ -14,7 +14,7 @@ export const getProvider = (wallet: any) => {
 
 export const getProgram = (wallet: any) => {
   const provider = getProvider(wallet);
-  return new Program(idl, PROGRAM_ID, provider);
+  return new Program(idl, provider);
 };
 
 export const generateSolanaPayURL = (merchant: PublicKey, amount: number, reference: PublicKey) => {

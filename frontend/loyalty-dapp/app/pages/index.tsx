@@ -46,7 +46,7 @@ export default function Home() {
     if (!wallet.publicKey) return;
     const program = getProgram(wallet);
 
-    const [loyaltyPDA] = await PublicKey.findProgramAddress(
+    const [loyaltyPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("loyalty"), wallet.publicKey.toBuffer()],
       program.programId
     );

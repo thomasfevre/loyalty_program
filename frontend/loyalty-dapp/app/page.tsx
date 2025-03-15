@@ -1,103 +1,94 @@
-import Image from "next/image";
+'use client'
+import { useState, useEffect } from "react";
+import { PublicKey, Connection, SystemProgram, Keypair } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { QRCodeSVG } from 'qrcode.react';
+import { generateSolanaPayURL, waitForPayment, getProgram } from "./utils/solana";
+import toast from "react-hot-toast";
+import '@solana/wallet-adapter-react-ui/styles.css'; // Import the CSS for the wallet adapter
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const wallet = useWallet();
+  const [amount, setAmount] = useState(1000000); // 0.001 SOL in lamports
+  const [qrCode, setQRCode] = useState<string | null>(null);
+  const [status, setStatus] = useState("Awaiting payment...");
+  const [reference, setReference] = useState<PublicKey | null>(null);
+  const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  const generatePaymentQR = () => {
+    if (!wallet.publicKey) {
+      toast.error("Wallet not connected");
+      return;
+    }
+
+    const referenceKey = new PublicKey(Keypair.generate().publicKey); // Unique reference
+    setReference(referenceKey);
+
+    const url = generateSolanaPayURL(wallet.publicKey, amount, referenceKey).toString();
+    setQRCode(url);
+    setStatus("Scan the QR Code to pay.");
+  };
+
+  useEffect(() => {
+    if (!reference) return;
+
+    (async () => {
+      try {
+        await waitForPayment(reference, connection);
+        toast.success("Payment received! Updating loyalty points...");
+        setStatus("Payment received! Updating blockchain...");
+        processLoyaltyUpdate();
+      } catch (error) {
+        toast.error("Error detecting payment");
+      }
+    })();
+  }, [reference]);
+
+  const processLoyaltyUpdate = async () => {
+    if (!wallet.publicKey) return;
+    const program = getProgram(wallet);
+
+    const [loyaltyPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("loyalty"), wallet.publicKey.toBuffer()],
+      program.programId
+    );
+
+    try {
+      const tx = await program.methods
+        .processPayment(amount)
+        .accounts({
+          loyaltyCard: loyaltyPDA,
+          customer: wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      toast.success(`Loyalty updated! TX: ${tx}`);
+      setStatus("Loyalty updated successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update loyalty program");
+    }
+  };
+
+  return (
+    <div style={{ textAlign: "center", padding: "20px" }}>
+      <h1>Solana Loyalty Program</h1>
+      <p>{status}</p>
+      <WalletMultiButton />
+      {wallet.publicKey ? (
+        <>
+          <div>
+            <label>Amount (lamports): </label>
+            <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+          </div>
+          <button onClick={generatePaymentQR}>Generate Payment QR</button>
+          {qrCode && <QRCodeSVG value={qrCode} size={256} />}
+        </>
+      ) : (
+        <p>Please connect your wallet.</p>
+      )}
     </div>
   );
 }

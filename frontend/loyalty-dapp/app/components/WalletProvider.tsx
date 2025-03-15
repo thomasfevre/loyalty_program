@@ -4,8 +4,6 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 import { clusterApiUrl } from "@solana/web3.js";
 
-require("@solana/wallet-adapter-react-ui/styles.css");
-
 const WalletProviderComponent: FC<{ children: React.ReactNode }> = ({ children }) => {
   const network = "devnet";
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
