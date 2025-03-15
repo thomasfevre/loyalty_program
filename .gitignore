@@ -1,1 +1,4 @@
 .qodo
+node_modules
+npm-debug.log
+target/
