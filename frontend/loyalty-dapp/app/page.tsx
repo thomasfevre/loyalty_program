@@ -1,20 +1,20 @@
-'use client'
+'use client' 
 import { useState, useEffect } from "react";
-import { PublicKey, Connection, SystemProgram, Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { QRCodeSVG } from 'qrcode.react';
-import { generateSolanaPayURL, waitForPayment, getProgram } from "./utils/solana";
+import {QRCodeSVG} from 'qrcode.react';
+import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID } from "./utils/solana";
 import toast from "react-hot-toast";
-import '@solana/wallet-adapter-react-ui/styles.css'; // Import the CSS for the wallet adapter
+import { BN } from "@coral-xyz/anchor";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 export default function Home() {
   const wallet = useWallet();
   const [amount, setAmount] = useState(1000000); // 0.001 SOL in lamports
   const [qrCode, setQRCode] = useState<string | null>(null);
-  const [status, setStatus] = useState("Awaiting payment...");
+  const [status, setStatus] = useState("Set the amount to be paid :");
   const [reference, setReference] = useState<PublicKey | null>(null);
-  const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+  const connection = getProvider(wallet).connection;
 
   const generatePaymentQR = () => {
     if (!wallet.publicKey) {
@@ -30,40 +30,21 @@ export default function Home() {
     setStatus("Scan the QR Code to pay.");
   };
 
-  useEffect(() => {
-    console.log('Use effect Triggered');
-    if (!reference) return;
-    console.log('Reference is set: ', reference.toBase58());
-    (async () => {
-      try {
-        await waitForPayment(reference, connection, wallet.publicKey!, amount);
-        toast.success("Payment received! Updating loyalty points...");
-        setStatus("Payment received! Updating blockchain...");
-        processLoyaltyUpdate();
-      } catch (error) {
-        toast.error("Error detecting payment");
-      }
-    })();
-  }, [reference]);
-
-  const processLoyaltyUpdate = async () => {
-    if (!wallet.publicKey) return;
+  const processLoyaltyUpdate = async (payerPubKey: PublicKey) => {
+    if (!wallet.publicKey || !payerPubKey) return;
+    console.log("TODO Processing loyalty update...", wallet.publicKey, payerPubKey);
     const program = getProgram(wallet);
 
     const [loyaltyPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("loyalty"), wallet.publicKey.toBuffer()],
-      program.programId
+      [Buffer.from("loyalty"), payerPubKey.toBuffer(), wallet.publicKey.toBuffer()],
+      PROGRAM_ID
     );
 
     try {
-      const tx = await program.methods
-        .processPayment(amount)
-        .accounts({
-          loyaltyCard: loyaltyPDA,
-          customer: wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+      const tx = await program.methods.processPayment(new BN(amount)).accounts({
+        customer: wallet.publicKey,
+        merchant: wallet.publicKey,
+      }).rpc();
 
       toast.success(`Loyalty updated! TX: ${tx}`);
       setStatus("Loyalty updated successfully!");
@@ -73,14 +54,32 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    if (!reference) return;
+
+    (async () => {
+      try {
+        const signatureInfo = await waitForPayment(reference, connection, wallet.publicKey!, amount);
+        toast.success("Payment received! Updating loyalty points...");
+        setStatus("Payment received! Updating blockchain...");
+        processLoyaltyUpdate(signatureInfo);
+      } catch (error) {
+        toast.error("Error detecting payment");
+      }
+    })();
+  }, [reference, connection, wallet.publicKey, amount, processLoyaltyUpdate]);
+
+ 
+
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
       <h1>Solana Loyalty Program</h1>
-      <p>{status}</p>
+      
       <WalletMultiButton />
       {wallet.publicKey ? (
         <>
           <div>
+          <p>{status}</p>
             <label>Amount (lamports): </label>
             <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
           </div>
