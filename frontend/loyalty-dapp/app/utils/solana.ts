@@ -65,3 +65,10 @@ export const waitForPayment = async (reference: PublicKey, connection: Connectio
   }
   throw new Error("Payment not detected within the timeout period.");
 };
+
+export const deriveLoyaltyPDA = (customer: PublicKey, merchant: PublicKey) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("loyalty"), customer.toBuffer(), merchant.toBuffer()],
+    PROGRAM_ID
+  )[0];
+};

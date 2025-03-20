@@ -65,12 +65,12 @@ pub struct ProcessPayment<'info> {
 
     // The customer pays, so this signer funds account creation if needed.
     #[account(mut)]
-    pub customer: Signer<'info>,
+    pub merchant: Signer<'info>,
 
     // Merchant account is used for refunds.
     /// CHECK: This is unchecked because we only use it to transfer lamports.
     #[account(mut)]
-    pub merchant: UncheckedAccount<'info>,
+    pub customer: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
