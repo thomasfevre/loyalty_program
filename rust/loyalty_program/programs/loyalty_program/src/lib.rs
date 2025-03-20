@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{system_instruction, program::invoke};
-use anchor_lang::system_program::ID;
 
-// declare_id!("YourProgramIDHere11111111111111111111111111111");
+declare_id!("CXccEo3Qk7j67C3KHUD1zmLsyFk4UEXJzFefPKaV7577");
 
 #[program]
 pub mod loyalty_program {
@@ -39,7 +38,7 @@ pub mod loyalty_program {
             invoke(
                 &ix,
                 &[
-                    merchant.to_account_info(),
+                    merchant.to_account_info(), // Ensure it's mutable and signed
                     customer.to_account_info(),
                     system_program.to_account_info(),
                 ],
@@ -53,7 +52,6 @@ pub mod loyalty_program {
 
 #[derive(Accounts)]
 pub struct ProcessPayment<'info> {
-    // Initializes the loyalty card if it doesn't exist using a PDA.
     #[account(
         init_if_needed,
         payer = customer,
@@ -63,14 +61,11 @@ pub struct ProcessPayment<'info> {
     )]
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
-    // The customer pays, so this signer funds account creation if needed.
-    #[account(mut)]
-    pub merchant: Signer<'info>,
+    #[account(mut, signer)]  // Ensure merchant is a signer
+    pub merchant: Signer<'info>,  
 
-    // Merchant account is used for refunds.
-    /// CHECK: This is unchecked because we only use it to transfer lamports.
-    #[account(mut)]
-    pub customer: UncheckedAccount<'info>,
+    #[account(mut)]  // Ensure customer is mutable
+    pub customer: SystemAccount<'info>,  
 
     pub system_program: Program<'info, System>,
 }
