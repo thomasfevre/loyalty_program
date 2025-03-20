@@ -43,6 +43,12 @@ pub mod loyalty_program {
                     system_program.to_account_info(),
                 ],
             )?;
+
+            // Update loyalty points after refund --> set to 0
+            loyalty_card.loyalty_points = loyalty_card
+                .loyalty_points
+                .checked_sub(loyalty_card.threshold)
+                .ok_or(ErrorCode::Overflow)?;
         }
 
         msg!("Loyalty card updated. New loyalty points: {}", loyalty_card.loyalty_points);
@@ -54,7 +60,7 @@ pub mod loyalty_program {
 pub struct ProcessPayment<'info> {
     #[account(
         init_if_needed,
-        payer = customer,
+        payer = merchant,
         space = 8 + LoyaltyCard::SIZE,
         seeds = [b"loyalty", customer.key().as_ref(), merchant.key().as_ref()],
         bump,

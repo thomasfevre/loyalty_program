@@ -10,6 +10,8 @@ describe("loyalty-program", () => {
 
   const customer = anchor.web3.Keypair.generate();
   const merchant = anchor.web3.Keypair.generate();
+  console.log("customer:", customer.publicKey.toBase58());
+  console.log("merchant:", merchant.publicKey.toBase58());
 
   it("Funds customer & merchant", async () => {
     const tx1 = await provider.connection.requestAirdrop(customer.publicKey, anchor.web3.LAMPORTS_PER_SOL);
@@ -23,6 +25,8 @@ describe("loyalty-program", () => {
       [Buffer.from("loyalty"), customer.publicKey.toBuffer(), merchant.publicKey.toBuffer()],
       program.programId
     );
+    console.log("loyaltyCardPDA:", loyaltyCardPDA.toBase58());
+    console.log("customer balance:", (await provider.connection.getBalance(customer.publicKey)).toString());
 
     await program.methods.processPayment(new anchor.BN(50))
       .accounts({
@@ -35,4 +39,26 @@ describe("loyalty-program", () => {
     const loyaltyCard = await program.account.loyaltyCard.fetch(loyaltyCardPDA);
     console.log("Loyalty Points:", loyaltyCard.loyaltyPoints.toString());
   });
+
+  it("Reaches the treshold", async () => {
+    const [loyaltyCardPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("loyalty"), customer.publicKey.toBuffer(), merchant.publicKey.toBuffer()],
+      program.programId
+    );
+    console.log("loyaltyCardPDA:", loyaltyCardPDA.toBase58());
+
+    await program.methods.processPayment(new anchor.BN(51))
+      .accounts({
+        customer: customer.publicKey,
+        merchant: merchant.publicKey,
+      })
+      .signers([merchant])
+      .rpc();
+
+    const loyaltyCard = await program.account.loyaltyCard.fetch(loyaltyCardPDA);
+    console.log("Loyalty Points:", loyaltyCard.loyaltyPoints.toString());
+    console.log("Final customer balance:", (await provider.connection.getBalance(customer.publicKey)).toString());
+  });
+
+
 });
