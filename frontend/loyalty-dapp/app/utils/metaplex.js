@@ -13,12 +13,12 @@ export const getCustomerAssets = async (customerPubKey) => {
     return assets;
 }
 
-// export const doesCustomerOwnMerchantAsset = async (customerPubKey: PublicKey, merchantPubKey: PublicKey) => {
-//     const assets = await getCustomerAssets(customerPubKey);
-//     return assets.some(asset => asset.merchantPubKey.equals(merchantPubKey));
-// }
+export const doesCustomerOwnMerchantAsset = async (customerPubKey, merchantPubKey) => {
+    const assets = await getCustomerAssets(customerPubKey);
+    return assets.some(asset => asset.updateAuthority.equals(merchantPubKey));
+}
 
-const { mint, transaction } = await metaplex.nfts().create({
+export const { mint, transaction } = await metaplex.nfts().create({
     uri:  "https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/common_2.jpg",
     name: "Loyalty NFT",
     symbol: "BAGET",
@@ -33,15 +33,33 @@ const { mint, transaction } = await metaplex.nfts().create({
     mintAuthority: merchantWallet, // Only the merchant can mint
     tokenOwner: customerWallet, // NFT is owned by customer
   });
+
+export const mintCustomerNft = async (customerPubKey, merchantPubKey, rewardTier) => {
+    const response = await umi.rpc.mint({
+        uri: `https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/${RewardTier[rewardTier]}.jpg`,
+        attributes: [
+            {
+                "trait_type": "Reward Tier",
+                "value": rewardTier
+            }
+        ],
+        sellerFeeBasisPoints: 0,
+        updateAuthority: merchantPubKey,
+        mintAuthority: merchantPubKey,
+        tokenOwner: customerPubKey
+    });
+
+    console.log("Mint NFT response: ", response);
+}
   
-const RewardTier = {
+export const RewardTier = {
     Common: "common_2",
     Rare: "rare_4",
     Epic: "epic_1",
     Legendary: "legendary_2",
   };
 
-const updateCustomerNft = async (customerPubKey, merchantPubKey, rewardTier) => {
+export const updateCustomerNft = async (customerPubKey, merchantPubKey, rewardTier) => {
     const assets = await getCustomerAssets(customerPubKey);
     const merchantAsset = assets.find(asset => asset.updateAuthority.equals(merchantPubKey));
     if (merchantAsset) {

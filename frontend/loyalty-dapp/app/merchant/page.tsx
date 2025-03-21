@@ -7,7 +7,7 @@ import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_
 import toast from "react-hot-toast";
 import { BN } from "@coral-xyz/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { getCustomerAssets } from "../utils/metaplex";
+import { getCustomerAssets, mintCustomerNft, RewardTier } from "../utils/metaplex";
 
 const MerchantPage: React.FC = () => {
   const wallet = useWallet();
@@ -48,6 +48,8 @@ const MerchantPage: React.FC = () => {
       const assets = getCustomerAssets(payerPubKey);
       console.log("Customer assets:", assets);
       // If not, mint a new NFT
+      const response = await mintCustomerNft(payerPubKey, wallet.publicKey, RewardTier.Common);
+      console.log("Minted NFT:", response);
       // else upgrade the nft uri a new reward tier is reached
       // Get the loyalty card PDA
       // const loyaltyCardPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey);
