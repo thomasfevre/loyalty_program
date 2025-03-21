@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
+    "@metaplex-foundation/digital-asset-standard-api": "^1.0.6",
+    "@metaplex-foundation/umi": "^1.1.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.1.1",
     "@solana/pay": "^0.2.5",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-phantom": "^0.9.24",
