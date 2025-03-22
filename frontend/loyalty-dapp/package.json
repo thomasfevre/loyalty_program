@@ -11,8 +11,10 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
     "@metaplex-foundation/digital-asset-standard-api": "^1.0.6",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi": "^1.1.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.1.1",
+    "@metaplex-foundation/umi-storage-mock": "^1.1.1",
     "@solana/pay": "^0.2.5",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-phantom": "^0.9.24",
@@ -21,6 +23,7 @@
     "@solana/wallet-adapter-wallets": "^0.19.32",
     "@solana/web3.js": "^1.98.0",
     "bignumber.js": "^9.1.2",
+    "dotenv": "^16.4.7",
     "next": "15.2.2",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",

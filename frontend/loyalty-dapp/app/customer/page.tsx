@@ -4,7 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import toast from "react-hot-toast";
-import { getProgram, deriveLoyaltyPDA } from "../utils/solana";
+import { getProgram, deriveLoyaltyPDA } from "../program/solana";
 import '@solana/wallet-adapter-react-ui/styles.css'; // Import the CSS for the wallet adapter
 
 const CustomerPage: React.FC = () => {

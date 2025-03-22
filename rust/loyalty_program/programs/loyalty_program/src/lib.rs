@@ -7,7 +7,7 @@ declare_id!("CXccEo3Qk7j67C3KHUD1zmLsyFk4UEXJzFefPKaV7577");
 pub mod loyalty_program {
     use super::*;
 
-    pub fn process_payment(ctx: Context<ProcessPayment>, amount: u64) -> Result<()> {
+    pub fn process_payment(ctx: Context<ProcessPayment>, amount: u64, mintAddress: Pubkey) -> Result<()> {
         let loyalty_card = &mut ctx.accounts.loyalty_card;
         let customer = &ctx.accounts.customer;
         let merchant = &ctx.accounts.merchant;
@@ -19,6 +19,7 @@ pub mod loyalty_program {
             loyalty_card.customer = customer.key();
             loyalty_card.threshold = 100;       // Example threshold value (adjust as needed)
             loyalty_card.refund_percentage = 15;  // 15% refund
+            loyalty_card.mintAddress = mintAddress;
         }
 
         // Save the current points, then add the new payment amount.
@@ -83,12 +84,13 @@ pub struct LoyaltyCard {
     pub loyalty_points: u64,
     pub threshold: u64,
     pub refund_percentage: u8,
+    pub mintAddress: Pubkey
 }
 
 impl LoyaltyCard {
     // Total size in bytes:
-    // 32 (merchant) + 32 (customer) + 8 (loyalty_points) + 8 (threshold) + 1 (refund_percentage)
-    const SIZE: usize = 32 + 32 + 8 + 8 + 1;
+    // 32 (merchant) + 32 (customer) + 8 (loyalty_points) + 8 (threshold) + 1 (refund_percentage) + 32 (mintAddress)
+    const SIZE: usize = 32 + 32 + 8 + 8 + 1 + 32;
 }
 
 #[error_code]

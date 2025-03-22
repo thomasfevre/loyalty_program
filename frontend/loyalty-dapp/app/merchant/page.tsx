@@ -3,11 +3,13 @@ import { useState, useEffect } from "react";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import {QRCodeSVG} from 'qrcode.react';
-import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID, deriveLoyaltyPDA } from "../utils/solana";
+import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID, deriveLoyaltyPDA } from "../program/solana";
 import toast from "react-hot-toast";
 import { BN } from "@coral-xyz/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { getCustomerAssets, mintCustomerNft, RewardTier } from "../utils/metaplex";
+import { doesCustomerOwnMerchantAsset, getCustomerAssets } from "../services/metaplex/utils";
+import { mintAndTransferCustomerNft } from "../services/metaplex/mint";
+import { updateNft } from "../services/metaplex/update";
 
 const MerchantPage: React.FC = () => {
   const wallet = useWallet();
@@ -37,26 +39,34 @@ const MerchantPage: React.FC = () => {
     const program = getProgram(wallet);
 
     try {
-      const tx = await program.methods.processPayment(new BN(amount)).accounts({
-        customer: wallet.publicKey,
-        merchant: wallet.publicKey,
-      }).rpc();
-
       
-
       // Check if the customer already own an NFT from the merchant
-      const assets = getCustomerAssets(payerPubKey);
-      console.log("Customer assets:", assets);
+      const customerNft = await doesCustomerOwnMerchantAsset(payerPubKey);
+      console.log("Customer nft ?: ", customerNft);
       // If not, mint a new NFT
-      const response = await mintCustomerNft(payerPubKey, wallet.publicKey, RewardTier.Common);
-      console.log("Minted NFT:", response);
+      if (customerNft === null) {
+        const mintAddress = await mintAndTransferCustomerNft(wallet, payerPubKey.toString());
+        console.log("Minted NFT:", mintAddress);
+        const tx = await program.methods.processPayment(new BN(amount), mintAddress).accounts({
+          customer: wallet.publicKey,
+          merchant: wallet.publicKey,
+        }).rpc();
+        toast.success(`Loyalty updated! TX: ${tx}`);
+        setStatus("Loyalty updated successfully!");
+
+      } else {
+        // If yes, upgrade the NFT
+
+        // const update = await updateNft(1, customerNft., wallet);
+        console.log("Updated NFT:", customerNft);
+      }
+    
       // else upgrade the nft uri a new reward tier is reached
       // Get the loyalty card PDA
       // const loyaltyCardPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey);
       // const loyaltyCard = await program.account.loyaltyCard.fetch(loyaltyCardPDA);
 
-      toast.success(`Loyalty updated! TX: ${tx}`);
-      setStatus("Loyalty updated successfully!");
+      
     } catch (err) {
       console.error(err);
       toast.error("Failed to update loyalty program");
