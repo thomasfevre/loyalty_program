@@ -3,13 +3,14 @@ import { useState, useEffect } from "react";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import {QRCodeSVG} from 'qrcode.react';
-import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID, deriveLoyaltyPDA } from "../program/solana";
+import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID, deriveLoyaltyPDA } from "../services/solana";
 import toast from "react-hot-toast";
 import { BN } from "@coral-xyz/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { doesCustomerOwnMerchantAsset, getCustomerAssets } from "../services/metaplex/utils";
 import { mintAndTransferCustomerNft } from "../services/metaplex/mint";
 import { updateNft } from "../services/metaplex/update";
+import { stat } from "fs";
 
 const MerchantPage: React.FC = () => {
   const wallet = useWallet();
@@ -39,15 +40,25 @@ const MerchantPage: React.FC = () => {
     const program = getProgram(wallet);
 
     try {
+      // Check if the customer has a PDA with the merchant
+      let loyaltyCardAccount;
+      try{
+        const customerPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey);
+        loyaltyCardAccount = await program.account.loyaltyCard.fetch(customerPDA);
+        console.log("Customer PDA: ", loyaltyCardAccount);
+      } catch (err){
+        console.log("No loyalty card found for this customer", err);
+      }
       
       // Check if the customer already own an NFT from the merchant
       const customerNft = await doesCustomerOwnMerchantAsset(payerPubKey);
       console.log("Customer nft ?: ", customerNft);
       // If not, mint a new NFT
-      if (customerNft === null) {
+      if (customerNft === false && !loyaltyCardAccount) {
+        console.log("Minting NFT...");
         const mintAddress = await mintAndTransferCustomerNft(wallet, payerPubKey.toString());
         console.log("Minted NFT:", mintAddress);
-        const tx = await program.methods.processPayment(new BN(amount), mintAddress).accounts({
+        const tx = await program.methods.processPayment(new BN(amount), new PublicKey(mintAddress)).accounts({
           customer: wallet.publicKey,
           merchant: wallet.publicKey,
         }).rpc();
@@ -78,6 +89,7 @@ const MerchantPage: React.FC = () => {
 
     (async () => {
       try {
+        if (status === "Payment received! Updating blockchain...") return;
         const signatureInfo = await waitForPayment(reference, connection, wallet.publicKey!, amount);
         toast.success("Payment received! Updating loyalty points...");
         setStatus("Payment received! Updating blockchain...");

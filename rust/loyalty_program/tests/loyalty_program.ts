@@ -28,7 +28,7 @@ describe("loyalty-program", () => {
     console.log("loyaltyCardPDA:", loyaltyCardPDA.toBase58());
     console.log("customer balance:", (await provider.connection.getBalance(customer.publicKey)).toString());
 
-    await program.methods.processPayment(new anchor.BN(50))
+    await program.methods.processPayment(new anchor.BN(50),  new anchor.web3.PublicKey("DcWhp6UCMTLRmK6sKGQbuXtnk4Ss1YpxS7Nf7LEsUKEY"))
       .accounts({
         customer: customer.publicKey,
         merchant: merchant.publicKey,
@@ -47,7 +47,7 @@ describe("loyalty-program", () => {
     );
     console.log("loyaltyCardPDA:", loyaltyCardPDA.toBase58());
 
-    await program.methods.processPayment(new anchor.BN(51))
+    await program.methods.processPayment(new anchor.BN(51), new anchor.web3.PublicKey("DcWhp6UCMTLRmK6sKGQbuXtnk4Ss1YpxS7Nf7LEsUKEY"))
       .accounts({
         customer: customer.publicKey,
         merchant: merchant.publicKey,

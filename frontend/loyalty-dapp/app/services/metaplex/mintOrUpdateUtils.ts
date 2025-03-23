@@ -1,12 +1,16 @@
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
-import { createGenericFile, createSignerFromKeypair, generateSigner, keypairIdentity, KeypairSigner, percentAmount, sol } from '@metaplex-foundation/umi';
-import { mockStorage } from '@metaplex-foundation/umi-storage-mock';
-import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
+import { KeypairSigner } from '@metaplex-foundation/umi';
 
-export const QUICKNODE_RPC = process.env.QUICKNODE_RPC;
-export const umi = createUmi(QUICKNODE_RPC!, { commitment: 'confirmed' }); 
 
-export let metadataUris: string[] = [];
+export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
+export const umi = createUmi(NETWORK!, { commitment: 'confirmed' }); 
+
+export let metadataUris: string[] = [
+    "https://mockstorage.example.com/ZiMmzsQBJz5f1Uw1wClP",
+    "https://mockstorage.example.com/zBNwiWr185Va9CmbMJ4v",
+    "https://mockstorage.example.com/AIUYludsgRkk2US8EFbW",
+    "https://mockstorage.example.com/IDCt02lsKQvgWjUMa2iS",
+]
 
 
 export const nftDetails = [
@@ -123,9 +127,6 @@ async function uploadMetadata(index: number): Promise<string> {
 
 // One time setup to upload metadata
 export const oneTimeSetup = async (merchantWallet: KeypairSigner) => {
-    umi.use(keypairIdentity(merchantWallet));
-    umi.use(mplTokenMetadata());
-    umi.use(mockStorage());
 
     for (let i = 0; i < nftDetails.length; i++) {
         metadataUris[i] = await uploadMetadata(i);

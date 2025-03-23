@@ -3,8 +3,8 @@ import { PublicKey, Connection, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { encodeURL, findReference, validateTransfer } from "@solana/pay";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import BigNumber from "bignumber.js";
-import loyalty_program from "./loyalty_program.json"; // Ensure IDL is in place
-import {LoyaltyProgram} from "./loyalty_program"
+import loyalty_program from "../program/loyalty_program.json"; // Ensure IDL is in place
+import {LoyaltyProgram} from "../program/loyalty_program";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 
 export const PROGRAM_ID = new PublicKey("4TuyQzPMELkUEmsqg1K5yxTyrzXpekDXw6HZnDZTRhxi");

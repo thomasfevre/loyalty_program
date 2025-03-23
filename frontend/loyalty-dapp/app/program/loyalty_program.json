@@ -1,11 +1,10 @@
 {
-  "address": "4TuyQzPMELkUEmsqg1K5yxTyrzXpekDXw6HZnDZTRhxi",
+  "address": "CXccEo3Qk7j67C3KHUD1zmLsyFk4UEXJzFefPKaV7577",
   "metadata": {
     "name": "loyalty_program",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Created with Anchor",
-    "address": "4TuyQzPMELkUEmsqg1K5yxTyrzXpekDXw6HZnDZTRhxi"
+    "description": "Created with Anchor"
   },
   "instructions": [
     {
@@ -50,12 +49,12 @@
           }
         },
         {
-          "name": "customer",
+          "name": "merchant",
           "writable": true,
           "signer": true
         },
         {
-          "name": "merchant",
+          "name": "customer",
           "writable": true
         },
         {
@@ -67,6 +66,10 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "mintAddress",
+          "type": "pubkey"
         }
       ]
     }
@@ -118,6 +121,10 @@
           {
             "name": "refund_percentage",
             "type": "u8"
+          },
+          {
+            "name": "mintAddress",
+            "type": "pubkey"
           }
         ]
       }

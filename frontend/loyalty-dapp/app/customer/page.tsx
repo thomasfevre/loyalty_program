@@ -4,13 +4,15 @@ import { PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import toast from "react-hot-toast";
-import { getProgram, deriveLoyaltyPDA } from "../program/solana";
+import { getProgram, deriveLoyaltyPDA } from "../services/solana";
 import '@solana/wallet-adapter-react-ui/styles.css'; // Import the CSS for the wallet adapter
+import { doesCustomerOwnMerchantAsset } from "../services/metaplex/utils";
 
 const CustomerPage: React.FC = () => {
   const wallet = useWallet();
   const [merchantPubKey, setMerchantPubKey] = useState<string>("");
   const [loyaltyCard, setLoyaltyCard] = useState<any>(null);
+  const [nft, setNft] = useState<any>(null);
 
   const fetchLoyaltyCard = async () => {
     if (!wallet.publicKey) {
@@ -19,6 +21,7 @@ const CustomerPage: React.FC = () => {
     }
 
     try {
+      // Program
       const merchantKey = new PublicKey(merchantPubKey);
       const program = getProgram(wallet);
       const loyaltyPDA = deriveLoyaltyPDA(wallet.publicKey, merchantKey);
@@ -26,6 +29,10 @@ const CustomerPage: React.FC = () => {
       const loyaltyCardAccount = await program.account.loyaltyCard.fetch(loyaltyPDA);
       setLoyaltyCard(loyaltyCardAccount);
       toast.success("Loyalty card fetched successfully!");
+
+      // Nft
+      const customerNft = await doesCustomerOwnMerchantAsset(wallet.publicKey, merchantKey);
+      console.log("Customer nft ?: ", customerNft);
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch loyalty card.");

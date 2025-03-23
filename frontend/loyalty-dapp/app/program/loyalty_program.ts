@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/loyalty_program.json`.
  */
 export type LoyaltyProgram = {
-  "address": "4TuyQzPMELkUEmsqg1K5yxTyrzXpekDXw6HZnDZTRhxi"
+  "address": "CXccEo3Qk7j67C3KHUD1zmLsyFk4UEXJzFefPKaV7577",
   "metadata": {
     "name": "loyaltyProgram",
     "version": "0.1.0",
@@ -27,7 +27,7 @@ export type LoyaltyProgram = {
       ],
       "accounts": [
         {
-          "name": "loyalty_card",
+          "name": "loyaltyCard",
           "writable": true,
           "pda": {
             "seeds": [
@@ -55,12 +55,12 @@ export type LoyaltyProgram = {
           }
         },
         {
-          "name": "customer",
+          "name": "merchant",
           "writable": true,
           "signer": true
         },
         {
-          "name": "merchant",
+          "name": "customer",
           "writable": true
         },
         {
@@ -72,6 +72,10 @@ export type LoyaltyProgram = {
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "mintAddress",
+          "type": "pubkey"
         }
       ]
     }
@@ -123,6 +127,10 @@ export type LoyaltyProgram = {
           {
             "name": "refundPercentage",
             "type": "u8"
+          },
+          {
+            "name": "mintAddress",
+            "type": "pubkey"
           }
         ]
       }

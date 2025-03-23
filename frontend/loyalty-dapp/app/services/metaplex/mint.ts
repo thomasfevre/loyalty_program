@@ -1,7 +1,7 @@
-import { createNft } from '@metaplex-foundation/mpl-token-metadata'
-import { generateSigner, KeypairSigner, percentAmount } from '@metaplex-foundation/umi';
+import { createNft, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata'
+import { generateSigner, signerIdentity, KeypairSigner, percentAmount } from '@metaplex-foundation/umi';
 import { Connection, ParsedAccountData, PublicKey, sendAndConfirmTransaction, Transaction, Signer } from '@solana/web3.js';
-import { metadataUris, umi, nftDetails, QUICKNODE_RPC, oneTimeSetup } from './mintOrUpdateUtils';
+import { metadataUris, umi, nftDetails, NETWORK, oneTimeSetup } from './mintOrUpdateUtils';
 
 
 
@@ -28,8 +28,9 @@ async function mintNft(metadataUri: string, signer:KeypairSigner) {
 
 // --------------------------  Transfer functions  --------------------------
 import { getOrCreateAssociatedTokenAccount, createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { mockStorage } from '@metaplex-foundation/umi-storage-mock';
 
-const connection = new Connection(QUICKNODE_RPC!, 'confirmed');
+const connection = new Connection(NETWORK!, 'confirmed');
 async function getNumberDecimals(mintAddress: string):Promise<number> {
     const info = await connection.getParsedAccountInfo(new PublicKey(mintAddress));
     const result = (info.value?.data as ParsedAccountData).parsed.info.decimals as number;
@@ -104,6 +105,9 @@ async function sendTokens(amount: number, mintAddress: string, merchantWallet: S
 // Wrapper function to mint and transfer the NFT
 export async function mintAndTransferCustomerNft(merchantWallet: unknown, recipient: string) {
     try {
+        umi.use(signerIdentity(merchantWallet as KeypairSigner));
+        umi.use(mplTokenMetadata());
+        umi.use(mockStorage());
         // Mint the NFT
         if (metadataUris.length === 0) {
             await oneTimeSetup(merchantWallet as KeypairSigner);
