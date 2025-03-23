@@ -1,6 +1,6 @@
 'use client' 
 import { useState, useEffect } from "react";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair, Signer } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import {QRCodeSVG} from 'qrcode.react';
 import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID, deriveLoyaltyPDA } from "../services/solana";
@@ -8,9 +8,8 @@ import toast from "react-hot-toast";
 import { BN } from "@coral-xyz/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { doesCustomerOwnMerchantAsset, getCustomerAssets } from "../services/metaplex/utils";
-import { mintAndTransferCustomerNft } from "../services/metaplex/mint";
+import { mintCustomerNft, sendTokens } from "../services/metaplex/mint";
 import { updateNft } from "../services/metaplex/update";
-import { stat } from "fs";
 
 const MerchantPage: React.FC = () => {
   const wallet = useWallet();
@@ -56,14 +55,33 @@ const MerchantPage: React.FC = () => {
       // If not, mint a new NFT
       if (customerNft === false && !loyaltyCardAccount) {
         console.log("Minting NFT...");
-        const mintAddress = await mintAndTransferCustomerNft(wallet, payerPubKey.toString());
-        console.log("Minted NFT:", mintAddress);
-        const tx = await program.methods.processPayment(new BN(amount), new PublicKey(mintAddress)).accounts({
-          customer: wallet.publicKey,
-          merchant: wallet.publicKey,
-        }).rpc();
-        toast.success(`Loyalty updated! TX: ${tx}`);
-        setStatus("Loyalty updated successfully!");
+        const {tx, mintPublicKey} = await mintCustomerNft(wallet, payerPubKey.toString());
+        if (!wallet.signTransaction) {
+          throw new Error("Wallet does not support signTransaction");
+        }
+        const txSigned = await wallet.signTransaction(tx);
+        console.log("txHash: ", txSigned);
+        const txHash = await connection.sendRawTransaction(txSigned.serialize());
+        console.log("txHash: ", txHash);
+        const confirmedTx = await connection.confirmTransaction(txHash);
+        console.log("Confirmed TX: ", confirmedTx);
+        console.log("Minted NFT:", mintPublicKey);
+        // Transfer the NFT to the customer
+        const sendTx = await sendTokens(1, mintPublicKey, wallet as unknown as Signer, payerPubKey.toString());
+        console.log("Sent NFT to customer: ", sendTx);
+        const txSigned2 = await wallet.signTransaction(sendTx);
+        console.log("txHash: ", txSigned2);
+        const txHash2 = await connection.sendRawTransaction(txSigned2.serialize());
+        console.log("txHash: ", txHash2);
+        const confirmedTx2 = await connection.confirmTransaction(txHash2);
+        console.log("Confirmed TX: ", confirmedTx2);
+        toast.success(`NFT Minted & Transfered!`);
+        // const pgrmTx = await program.methods.processPayment(new BN(amount), new PublicKey(mintPublicKey)).accounts({
+        //   customer: payerPubKey,
+        //   merchant: wallet.publicKey,
+        // }).rpc();
+        // toast.success(`Loyalty updated! TX: ${pgrmTx}`);
+        // setStatus("Loyalty updated successfully!");
 
       } else {
         // If yes, upgrade the NFT

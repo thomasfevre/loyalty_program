@@ -1,9 +1,13 @@
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { KeypairSigner } from '@metaplex-foundation/umi';
+import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
+import { mockStorage } from '@metaplex-foundation/umi-storage-mock';
 
 
 export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
 export const umi = createUmi(NETWORK!, { commitment: 'confirmed' }); 
+umi.use(mplTokenMetadata());
+umi.use(mockStorage());
 
 export let metadataUris: string[] = [
     "https://mockstorage.example.com/ZiMmzsQBJz5f1Uw1wClP",
