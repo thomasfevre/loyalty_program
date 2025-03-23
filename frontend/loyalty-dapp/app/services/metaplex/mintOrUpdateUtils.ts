@@ -7,13 +7,12 @@ import { mockStorage } from '@metaplex-foundation/umi-storage-mock';
 export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
 export const umi = createUmi(NETWORK!, { commitment: 'confirmed' }); 
 umi.use(mplTokenMetadata());
-umi.use(mockStorage());
 
 export let metadataUris: string[] = [
-    "https://mockstorage.example.com/ZiMmzsQBJz5f1Uw1wClP",
-    "https://mockstorage.example.com/zBNwiWr185Va9CmbMJ4v",
-    "https://mockstorage.example.com/AIUYludsgRkk2US8EFbW",
-    "https://mockstorage.example.com/IDCt02lsKQvgWjUMa2iS",
+    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_common.json",
+    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_rare.json",
+    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_legendary.json",
+    "https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/metadata_legendary.json"
 ]
 
 

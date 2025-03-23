@@ -14,7 +14,7 @@ export async function updateNft(newMetadataUriIndex: number, mintAddress: Public
                 data: {
                     ...metadata,
                     name: nftDetails[newMetadataUriIndex].name,
-                    symbol: "testU",
+                    symbol: nftDetails[newMetadataUriIndex].symbol,
                     uri: metadataUris[newMetadataUriIndex],
                     sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
                     creators: metadata.creators

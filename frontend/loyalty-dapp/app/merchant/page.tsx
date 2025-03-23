@@ -20,8 +20,8 @@ const MerchantPage: React.FC = () => {
   const connection = getProvider(wallet).connection;
 
   const generatePaymentQR = () => {
-    if (!wallet.publicKey) {
-      toast.error("Wallet not connected");
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      toast.error("Wallet not connected or does not support signing transactions.");
       return;
     }
 
@@ -50,7 +50,7 @@ const MerchantPage: React.FC = () => {
       }
       
       // Check if the customer already own an NFT from the merchant
-      const customerNft = await doesCustomerOwnMerchantAsset(payerPubKey);
+      const customerNft = await doesCustomerOwnMerchantAsset(payerPubKey, wallet.publicKey);
       console.log("Customer nft ?: ", customerNft);
       // If not, mint a new NFT
       if (customerNft === false && !loyaltyCardAccount) {
@@ -76,12 +76,14 @@ const MerchantPage: React.FC = () => {
         const confirmedTx2 = await connection.confirmTransaction(txHash2);
         console.log("Confirmed TX: ", confirmedTx2);
         toast.success(`NFT Minted & Transfered!`);
-        // const pgrmTx = await program.methods.processPayment(new BN(amount), new PublicKey(mintPublicKey)).accounts({
-        //   customer: payerPubKey,
-        //   merchant: wallet.publicKey,
-        // }).rpc();
-        // toast.success(`Loyalty updated! TX: ${pgrmTx}`);
-        // setStatus("Loyalty updated successfully!");
+
+        // Update the loyalty program
+        const pgrmTx = await program.methods.processPayment(new BN(amount), new PublicKey(mintPublicKey)).accounts({
+          customer: payerPubKey,
+          merchant: wallet.publicKey,
+        }).rpc();
+        toast.success(`Loyalty updated! TX: ${pgrmTx}`);
+        setStatus("Loyalty updated successfully!");
 
       } else {
         // If yes, upgrade the NFT

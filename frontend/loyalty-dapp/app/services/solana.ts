@@ -26,6 +26,10 @@ export const getProvider = (wallet: WalletContextState) => {
 };
 
 export const getProgram = (wallet:WalletContextState )  => {
+  if (!wallet || !wallet.publicKey || !wallet.signTransaction) {
+    throw new Error("Wallet is not connected or does not support signing transactions.");
+  }
+  
   return new Program<LoyaltyProgram>(loyalty_program, getProvider(wallet));
 }
 
