@@ -126,7 +126,7 @@ async function uploadMetadata(index: number): Promise<string> {
 }
 
 // One time setup to upload metadata
-export const oneTimeSetup = async (merchantWallet: KeypairSigner) => {
+export const oneTimeSetup = async () => {
 
     for (let i = 0; i < nftDetails.length; i++) {
         metadataUris[i] = await uploadMetadata(i);

@@ -1,0 +1,12 @@
+WalletProviderBase.tsx:63 WalletSignTransactionError: transaction.serialize is not a function
+    at StandardWalletAdapter._StandardWalletAdapter_signTransaction [as signTransaction] (adapter.ts:384:23)
+    at WalletProviderBase.useMemo[signTransaction] [as signTransaction] (WalletProviderBase.tsx:213:44)
+ 
+StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+WalletProviderBase.useRef[handleErrorRef]	@	WalletProviderBase.tsx:63
+WalletProviderBase.useEffect.handleError	@	WalletProviderBase.tsx:146
+_StandardWalletAdapter_signTransaction	@	adapter.ts:387
+WalletProviderBase.useMemo[signTransaction]	@	WalletProviderBase.tsx:213
+await in sendAndConfirm		
+mintNft	@	mint.ts:21
+mintAndTransferCustomerNft	@	mint.ts:115
