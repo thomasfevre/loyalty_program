@@ -26,13 +26,18 @@ const CustomerPage: React.FC = () => {
       const program = getProgram(wallet);
       const loyaltyPDA = deriveLoyaltyPDA(wallet.publicKey, merchantKey);
 
-      // const loyaltyCardAccount = await program.account.loyaltyCard.fetch(loyaltyPDA);
-      // setLoyaltyCard(loyaltyCardAccount);
-      // toast.success("Loyalty card fetched successfully!");
+      const loyaltyCardAccount = await program.account.loyaltyCard.fetch(loyaltyPDA);
+      setLoyaltyCard(loyaltyCardAccount);
+      toast.success("Loyalty card fetched successfully!");
 
       // Nft
-      // const customerNft = await fetchNftWithMintAddress("Emp1Rd7ktUEMxgoyxKx6kDRcMgaEN9n2eGV91fsS1NE5");
-      // console.log("Customer nft ?: ", customerNft);
+      if (loyaltyCardAccount.mintAddress){
+        const customerNft = await fetchNftWithMintAddress(loyaltyCardAccount.mintAddress);
+        console.log("Customer nft ?: ", customerNft);
+        // get the metadata of the NFT (fetch from customerNft.uri)
+        // Then check the reaward level property 
+      }
+      
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch loyalty card.");
@@ -62,6 +67,7 @@ const CustomerPage: React.FC = () => {
               <p>Loyalty Points: {loyaltyCard.loyaltyPoints.toString()}</p>
               <p>Threshold: {loyaltyCard.threshold.toString()}</p>
               <p>Refund Percentage: {loyaltyCard.refundPercentage.toString()}%</p>
+              <p>Mint Address: {loyaltyCard.mintAddress.toString()}</p>
             </div>
           )}
         </>

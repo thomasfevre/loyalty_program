@@ -7,7 +7,7 @@ import loyalty_program from "../program/loyalty_program.json"; // Ensure IDL is 
 import {LoyaltyProgram} from "../program/loyalty_program";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 
-export const PROGRAM_ID = new PublicKey("4TuyQzPMELkUEmsqg1K5yxTyrzXpekDXw6HZnDZTRhxi");
+export const PROGRAM_ID = new PublicKey("CXccEo3Qk7j67C3KHUD1zmLsyFk4UEXJzFefPKaV7577");
 export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
 console.log("Network:", NETWORK);
 export const connection = new Connection(NETWORK!, "confirmed");
