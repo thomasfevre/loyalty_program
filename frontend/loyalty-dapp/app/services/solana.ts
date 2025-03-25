@@ -72,7 +72,7 @@ export const waitForPayment = async (reference: PublicKey, connection: Connectio
 
 export const deriveLoyaltyPDA = (customer: PublicKey, merchant: PublicKey) => {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("loyalty"), customer.toBuffer(), merchant.toBuffer()],
+    [Buffer.from("loyalty"), customer.toBytes(), merchant.toBytes()],
     PROGRAM_ID
   )[0];
 };
