@@ -6,7 +6,8 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import toast from "react-hot-toast";
 import { getProgram, deriveLoyaltyPDA } from "../services/solana";
 import '@solana/wallet-adapter-react-ui/styles.css'; // Import the CSS for the wallet adapter
-import { doesCustomerOwnMerchantAsset, fetchNftWithMintAddress } from "../services/metaplex/utils";
+import { fetchNftWithMintAddress } from "../services/metaplex/utils";
+const axios = require('axios');
 
 const CustomerPage: React.FC = () => {
   const wallet = useWallet();
@@ -31,13 +32,42 @@ const CustomerPage: React.FC = () => {
       toast.success("Loyalty card fetched successfully!");
 
       // Nft
-      if (loyaltyCardAccount.mintAddress){
+      if (loyaltyCardAccount.mintAddress) {
         const customerNft = await fetchNftWithMintAddress(loyaltyCardAccount.mintAddress);
         console.log("Customer nft ?: ", customerNft);
         // get the metadata of the NFT (fetch from customerNft.uri)
-        // Then check the reaward level property 
+        if (customerNft?.uri) {
+          const response = await axios.get(customerNft.uri);
+          let metadata = response.data;
+
+          // Check if metadata is a string and parse it
+        let parsedMetadata;
+        if (typeof metadata === "string") {
+          // Remove special characters from the metadata string
+          
+          metadata = metadata.replace(/[^\x20-\x7E]/g, ""); // Removes non-ASCII characters
+          
+          try {
+            parsedMetadata = JSON.parse(metadata);
+          } catch (error) {
+            console.error("Failed to parse metadata:", error);
+            toast.error("Failed to parse NFT metadata.");
+            return;
+          }
+        } else {
+          parsedMetadata = metadata;
+        }
+
+        console.log("Parsed metadata:", parsedMetadata);
+        setNft(parsedMetadata);
+          console.log("NFT fetched successfully!", nft);
+          toast.success("NFT fetched successfully!");
+        } else {
+          console.error("Invalid NFT URI:", customerNft?.uri);
+          toast.error("Failed to fetch NFT metadata. Invalid URI.");
+        }
       }
-      
+
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch loyalty card.");
@@ -68,6 +98,15 @@ const CustomerPage: React.FC = () => {
               <p>Threshold: {loyaltyCard.threshold.toString()}</p>
               <p>Refund Percentage: {loyaltyCard.refundPercentage.toString()}%</p>
               <p>Mint Address: {loyaltyCard.mintAddress.toString()}</p>
+            </div>
+          )}
+
+          {nft && (
+            <div style={{ marginTop: "2rem" }}>
+              <h2>NFT Details</h2>
+              <p>Name: {nft.name}</p>
+              <p>Symbol: {nft.symbol}</p>
+              <img src={nft.image} alt="NFT" style={{ width: "200px" }} />
             </div>
           )}
         </>
