@@ -1,8 +1,8 @@
-'use client' 
+'use client'
 import { useState, useEffect } from "react";
 import { PublicKey, Keypair, Signer } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
-import {QRCodeSVG} from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID, deriveLoyaltyPDA } from "../services/solana";
 import toast from "react-hot-toast";
 import { BN } from "@coral-xyz/anchor";
@@ -41,21 +41,21 @@ const MerchantPage: React.FC = () => {
     try {
       // Check if the customer has a PDA with the merchant
       let loyaltyCardAccount;
-      try{
+      try {
         const customerPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey);
         loyaltyCardAccount = await program.account.loyaltyCard.fetch(customerPDA);
         console.log("Customer PDA: ", loyaltyCardAccount);
-      } catch (err){
+      } catch (err) {
         console.log("No loyalty card found for this customer", err);
       }
-      
+
       // Check if the customer already own an NFT from the merchant
       const customerNft = await doesCustomerOwnMerchantAsset(payerPubKey, wallet.publicKey);
       console.log("Customer nft ?: ", customerNft);
       // If not, mint a new NFT
       if (customerNft === false && !loyaltyCardAccount) {
         console.log("Minting NFT...");
-        const {tx, mintPublicKey} = await mintCustomerNft(wallet, payerPubKey.toString());
+        const { tx, mintPublicKey } = await mintCustomerNft(wallet, payerPubKey.toString());
         if (!wallet.signTransaction) {
           throw new Error("Wallet does not support signTransaction");
         }
@@ -91,13 +91,13 @@ const MerchantPage: React.FC = () => {
         // const update = await updateNft(1, customerNft., wallet);
         console.log("Updated NFT:", customerNft);
       }
-    
+
       // else upgrade the nft uri a new reward tier is reached
       // Get the loyalty card PDA
       // const loyaltyCardPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey);
       // const loyaltyCard = await program.account.loyaltyCard.fetch(loyaltyCardPDA);
 
-      
+
     } catch (err) {
       console.error(err);
       toast.error("Failed to update loyalty program");
@@ -120,25 +120,49 @@ const MerchantPage: React.FC = () => {
     })();
   }, [reference, connection, wallet.publicKey, amount, processLoyaltyUpdate]);
 
- 
+
 
   return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
-      <h1>Solana Loyalty Program</h1>
+    <div className="flex flex-col items-center text-center p-8">
+      <button
+        onClick={() => window.location.href = "/"}
+        className="self-start mb-4 text-indigo-600 flex items-center"
+      >
+        <span className="mr-2">←</span> Go Back to Homepage
+      </button>
+      <h1 className="text-3xl font-bold mb-6">Solana Loyalty Program</h1>
+
+      <div className="bg-blue-500 width-fit shadow-md rounded-lg p-6 mb-6">
+        <p className="text-lg font-semibold mb-4">Merchant Wallet:</p>
+        <WalletMultiButton className="w-full" />
+      </div>
       
-      <WalletMultiButton />
       {wallet.publicKey ? (
         <>
-          <div>
-          <p>{status}</p>
-            <label>Amount (lamports): </label>
-            <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+          <div className="my-4">
+            <p className="text-lg mb-2">{status}</p>
+            <label className="block text-sm font-medium  mb-1">Amount (lamports):</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              className="w-fit px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            />
           </div>
-          <button onClick={generatePaymentQR}>Generate Payment QR</button>
-          {qrCode && <QRCodeSVG value={qrCode} size={256} />}
+          <button
+            onClick={generatePaymentQR}
+            className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            Generate Payment QR
+          </button>
+          {qrCode && (
+            <div className="mt-6">
+              <QRCodeSVG value={qrCode} size={256} />
+            </div>
+          )}
         </>
       ) : (
-        <p>Please connect your wallet.</p>
+        <p className="text-lg ">Please connect your wallet.</p>
       )}
     </div>
   );
