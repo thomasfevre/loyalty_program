@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from "react";
 import { PublicKey, Keypair, Signer } from "@solana/web3.js";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useAnchorWallet  } from "@solana/wallet-adapter-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { generateSolanaPayURL, waitForPayment, getProvider, getProgram, PROGRAM_ID, deriveLoyaltyPDA } from "../services/solana";
 import toast from "react-hot-toast";
@@ -12,15 +12,15 @@ import { mintCustomerNft, sendTokens } from "../services/metaplex/mint";
 import { updateNft } from "../services/metaplex/update";
 
 const MerchantPage: React.FC = () => {
-  const wallet = useWallet();
+  const wallet = useAnchorWallet ();
   const [amount, setAmount] = useState(1000000); // 0.001 SOL in lamports
   const [qrCode, setQRCode] = useState<string | null>(null);
   const [status, setStatus] = useState("Set the amount to be paid :");
   const [reference, setReference] = useState<PublicKey | null>(null);
-  const connection = getProvider(wallet).connection;
+  const connection = getProvider(wallet!)?.connection;
 
   const generatePaymentQR = () => {
-    if (!wallet.publicKey || !wallet.signTransaction) {
+    if (!wallet || !wallet.publicKey || !wallet.signTransaction) {
       toast.error("Wallet not connected or does not support signing transactions.");
       return;
     }
@@ -34,7 +34,7 @@ const MerchantPage: React.FC = () => {
   };
 
   const processLoyaltyUpdate = async (payerPubKey: PublicKey) => {
-    if (!wallet.publicKey || !wallet.signTransaction || !payerPubKey) {
+    if (!wallet || !wallet.publicKey || !wallet.signTransaction || !payerPubKey) {
       toast.error("Wallet not connected or does not support signing transactions.");
       return;
     }
@@ -64,9 +64,9 @@ const MerchantPage: React.FC = () => {
         }
         const txSigned = await wallet.signTransaction(tx);
         console.log("txHash: ", txSigned);
-        const txHash = await connection.sendRawTransaction(txSigned.serialize());
+        const txHash = await connection?.sendRawTransaction(txSigned.serialize());
         console.log("txHash: ", txHash);
-        const confirmedTx = await connection.confirmTransaction(txHash);
+        const confirmedTx = await connection?.confirmTransaction(txHash!);
         console.log("Confirmed TX: ", confirmedTx);
         console.log("Minted NFT:", mintPublicKey);
 
@@ -98,12 +98,12 @@ const MerchantPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!reference) return;
+    if (!reference || !wallet) return;
 
     (async () => {
       try {
         if (status === "Scan the QR Code to pay.") {
-          const signatureInfo = await waitForPayment(reference, connection, wallet.publicKey!, amount);
+          const signatureInfo = await waitForPayment(reference, connection!, wallet.publicKey!, amount);
           toast.success("Payment received! Updating loyalty points...");
           setStatus("Payment received! Updating blockchain...");
           processLoyaltyUpdate(signatureInfo);
@@ -112,7 +112,7 @@ const MerchantPage: React.FC = () => {
         toast.error("Error detecting payment");
       }
     })();
-  }, [reference, connection, wallet.publicKey, amount, processLoyaltyUpdate]);
+  }, [reference, connection, amount, processLoyaltyUpdate]);
 
 
 
@@ -131,7 +131,7 @@ const MerchantPage: React.FC = () => {
         <WalletMultiButton className="w-full" />
       </div>
       
-      {wallet.publicKey ? (
+      {wallet!.publicKey ? (
         <>
           <div className="my-4">
             <p className="text-lg mb-2">{status}</p>

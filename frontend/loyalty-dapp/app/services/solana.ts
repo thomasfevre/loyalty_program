@@ -5,7 +5,7 @@ import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import BigNumber from "bignumber.js";
 import loyalty_program from "../program/loyalty_program.json"; // Ensure IDL is in place
 import {LoyaltyProgram} from "../program/loyalty_program";
-import { WalletContextState } from "@solana/wallet-adapter-react";
+import { AnchorWallet } from "@solana/wallet-adapter-react";
 
 export const PROGRAM_ID = new PublicKey("CXccEo3Qk7j67C3KHUD1zmLsyFk4UEXJzFefPKaV7577");
 export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
@@ -13,8 +13,9 @@ console.log("Network:", NETWORK);
 export const connection = new Connection(NETWORK!, "confirmed");
 let provider: AnchorProvider | null = null;
 
-export const getProvider = (wallet: WalletContextState) => {
-  if (!provider) {
+export const getProvider = (wallet: AnchorWallet ) => {
+  if (!provider && wallet && wallet.publicKey && wallet.signTransaction) {
+    // Create a new AnchorProvider instance with the wallet and connection
     const compatibleWallet = {
       publicKey: wallet.publicKey,
       signTransaction: wallet.signTransaction!,
@@ -25,12 +26,13 @@ export const getProvider = (wallet: WalletContextState) => {
   return provider;
 };
 
-export const getProgram = (wallet:WalletContextState )  => {
-  if (!wallet || !wallet.publicKey || !wallet.signTransaction) {
+export const getProgram = (wallet:AnchorWallet )  => {
+  const provider = getProvider(wallet);
+  if (!wallet || !wallet.publicKey || !wallet.signTransaction || !provider) {
     throw new Error("Wallet is not connected or does not support signing transactions.");
   }
   
-  return new Program<LoyaltyProgram>(loyalty_program, getProvider(wallet));
+  return new Program<LoyaltyProgram>(loyalty_program, provider);
 }
 
 export const generateSolanaPayURL = (merchant: PublicKey, amount: number, reference: PublicKey) => {
