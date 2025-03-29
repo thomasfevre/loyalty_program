@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { getProgram, deriveLoyaltyPDA } from "../services/solana";
 import '@solana/wallet-adapter-react-ui/styles.css'; // Import the CSS for the wallet adapter
 import { fetchNftWithMintAddress } from "../services/metaplex/utils";
+import { set } from "@metaplex-foundation/umi/serializers";
 const axios = require('axios');
 
 const CustomerPage: React.FC = () => {
@@ -37,31 +38,32 @@ const CustomerPage: React.FC = () => {
         console.log("Customer nft ?: ", customerNft);
         // get the metadata of the NFT (fetch from customerNft.uri)
         if (customerNft?.uri) {
-          const response = await axios.get(customerNft.uri);
-          let metadata = response.data;
-
-          // Check if metadata is a string and parse it
-        let parsedMetadata;
-        if (typeof metadata === "string") {
-          // Remove special characters from the metadata string
-          
-          metadata = metadata.replace(/[^\x20-\x7E]/g, ""); // Removes non-ASCII characters
-          
           try {
-            parsedMetadata = JSON.parse(metadata);
-          } catch (error) {
-            console.error("Failed to parse metadata:", error);
-            toast.error("Failed to parse NFT metadata.");
-            return;
-          }
-        } else {
-          parsedMetadata = metadata;
-        }
+            const response = await axios.get(customerNft.uri, {
+              headers: { "Accept": "application/json" }
+            });
+            console.log("Raw response:", response.data);
+            console.log("Response type:", typeof response.data);
 
-        console.log("Parsed metadata:", parsedMetadata);
-        setNft(parsedMetadata);
-          console.log("NFT fetched successfully!", nft);
-          toast.success("NFT fetched successfully!");
+            // Ensure it's a string before parsing
+            let metadataString = response.data;
+           
+            // Convert to valid JSON format (fixing single quotes, backticks, and property labels)
+            metadataString = metadataString
+              .replace(/`/g, '"') // Replace backticks with double quotes
+              .replace(/'/g, '"') // Replace single quotes with double quotes
+              .replace(/(\b(?!https)\w+)\s*:/g, '"$1":'); // Replace property labels to be in valid JSON format, including cases with spaces before the colon
+
+            console.log("Metadata string:", metadataString);
+            const parsedMetadata = JSON.parse(metadataString);
+            setNft(parsedMetadata);
+
+            console.log("Parsed metadata:", parsedMetadata);
+            console.log("NFT Name:", parsedMetadata.attributes[0].value);  // Example: Access the 'Reward Tier' attribute
+          } catch (error) {
+            console.error("Failed to fetch or parse NFT metadata:", error);
+            toast.error("Failed to parse NFT metadata.");
+          }
         } else {
           console.error("Invalid NFT URI:", customerNft?.uri);
           toast.error("Failed to fetch NFT metadata. Invalid URI.");
@@ -91,7 +93,7 @@ const CustomerPage: React.FC = () => {
           <button onClick={fetchLoyaltyCard}>Fetch Loyalty Card</button>
           {loyaltyCard && (
             <div style={{ marginTop: "2rem" }}>
-              <h2>Loyalty Card Details</h2>
+              <h1  style={{ fontSize: "2em", marginBottom: "2vh"}}>Loyalty Card Details</h1>
               <p>Merchant: {loyaltyCard.merchant.toString()}</p>
               <p>Customer: {loyaltyCard.customer.toString()}</p>
               <p>Loyalty Points: {loyaltyCard.loyaltyPoints.toString()}</p>
@@ -102,10 +104,11 @@ const CustomerPage: React.FC = () => {
           )}
 
           {nft && (
-            <div style={{ marginTop: "2rem" }}>
-              <h2>NFT Details</h2>
-              <p>Name: {nft.name}</p>
+            <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <h1 style={{ fontSize: "2em", marginBottom: "2vh"}}>NFT Details</h1>
+              <p>Name: <strong>{nft.name}</strong></p>
               <p>Symbol: {nft.symbol}</p>
+              <p>Current Reward Level: <strong>{nft.attributes[0].value}</strong></p>
               <img src={nft.image} alt="NFT" style={{ width: "200px" }} />
             </div>
           )}
