@@ -1,5 +1,5 @@
-import { createNft, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata'
-import { generateSigner, signerIdentity, percentAmount, Signer as umiSigner, publicKey as umiPublicKey, createSignerFromKeypair} from '@metaplex-foundation/umi';
+import { createV1, mintV1, mplTokenMetadata, TokenStandard } from '@metaplex-foundation/mpl-token-metadata'
+import { generateSigner, signerIdentity, percentAmount, Signer as umiSigner, publicKey as umiPublicKey, createSignerFromKeypair, KeypairSigner} from '@metaplex-foundation/umi';
 import { toWeb3JsTransaction, toWeb3JsLegacyTransaction, toWeb3JsPublicKey, toWeb3JsKeypair } from "@metaplex-foundation/umi-web3js-adapters"
 import { Connection, ParsedAccountData, PublicKey, sendAndConfirmTransaction, Transaction, Signer } from '@solana/web3.js';
 import { metadataUris, umi, nftDetails, NETWORK, oneTimeSetup } from './mintOrUpdateUtils';
@@ -9,23 +9,42 @@ import { metadataUris, umi, nftDetails, NETWORK, oneTimeSetup } from './mintOrUp
 
 // --------------------------  Mint functions  --------------------------
 
-async function mintNft(metadataUri: string, signer:umiSigner) {
+async function createNft(metadataUri: string, signer:umiSigner) {
     try {
         const mint = generateSigner(umi);
-        const tx = await createNft(umi, {
+        const tx = await createV1(umi, {
             mint,
-            name: nftDetails[0].name,
-            symbol: nftDetails[0].symbol,
+            authority: signer,
+            name: 'Loyalty Pay NFT',
             uri: metadataUri,
             sellerFeeBasisPoints: percentAmount(0),
-            creators: [{ address: signer.publicKey, verified: true, share: 100 }],
-        }).useV0().buildWithLatestBlockhash(umi)
+            tokenStandard: TokenStandard.NonFungible,
+          }).useV0().buildWithLatestBlockhash(umi)
         
-        const web3JsTx = toWeb3JsLegacyTransaction(tx);
+        const web3JsCreateTx = toWeb3JsLegacyTransaction(tx);
        
         // const signedTX = await mint.signTransaction(tx);
         console.log(`Created NFT: ${mint.publicKey.toString()}`)
-        return { web3JsTx, mint };
+        return { web3JsCreateTx, mint };
+    } catch (e) {
+        throw e;
+    }
+}
+
+async function mintNft(mint: KeypairSigner, signer:umiSigner, recipient: string) {
+    try {
+        const tx = await mintV1(umi, {
+            mint: mint.publicKey,
+            authority: signer,
+            amount: 1,
+            tokenOwner: umiPublicKey(recipient),
+            tokenStandard: TokenStandard.NonFungible,
+          }).useV0().buildWithLatestBlockhash(umi)
+        
+        const web3JsMintTx = toWeb3JsLegacyTransaction(tx);
+        // const signedTX = await mint.signTransaction(tx);
+        console.log(`Created NFT: ${mint.publicKey.toString()}`)
+        return { web3JsMintTx, mint };
     } catch (e) {
         throw e;
     }
@@ -117,13 +136,18 @@ export async function mintCustomerNft(merchantWallet: unknown, recipient: string
         if (metadataUris.length === 0) {
             await oneTimeSetup();
         }
-        const { web3JsTx: umiTx, mint }= await mintNft(metadataUris[0], merchantWallet as umiSigner);
+        const { web3JsCreateTx: umiTx, mint }= await createNft(metadataUris[0], merchantWallet as umiSigner);
+        const { web3JsMintTx: umiMintTx } = await mintNft(mint, merchantWallet as umiSigner, recipient);
+        // Combine the transactions
         let tx = new Transaction().add(umiTx);
+        tx.add(umiMintTx);
+        // Sign the transaction with the merchant wallet and mint keypair
         const wallet = merchantWallet as umiSigner;
         tx.feePayer = new PublicKey(wallet.publicKey);
         tx.recentBlockhash = (await umi.rpc.getLatestBlockhash()).blockhash;
         const web3JsMintSigner = toWeb3JsKeypair(mint);
         tx.partialSign(web3JsMintSigner);
+
         
         return {tx, mintPublicKey: mint.publicKey.toString()};
     } catch (e) {

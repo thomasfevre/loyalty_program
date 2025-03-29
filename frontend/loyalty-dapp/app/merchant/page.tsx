@@ -34,7 +34,10 @@ const MerchantPage: React.FC = () => {
   };
 
   const processLoyaltyUpdate = async (payerPubKey: PublicKey) => {
-    if (!wallet.publicKey || !payerPubKey) return;
+    if (!wallet.publicKey || !wallet.signTransaction || !payerPubKey) {
+      toast.error("Wallet not connected or does not support signing transactions.");
+      return;
+    }
     console.log("TODO Processing loyalty update...", wallet.publicKey, payerPubKey);
     const program = getProgram(wallet);
 
@@ -66,16 +69,6 @@ const MerchantPage: React.FC = () => {
         const confirmedTx = await connection.confirmTransaction(txHash);
         console.log("Confirmed TX: ", confirmedTx);
         console.log("Minted NFT:", mintPublicKey);
-        // Transfer the NFT to the customer
-        const sendTx = await sendTokens(1, mintPublicKey, wallet as unknown as Signer, payerPubKey.toString());
-        console.log("Sent NFT to customer: ", sendTx);
-        const txSigned2 = await wallet.signTransaction(sendTx);
-        console.log("txHash: ", txSigned2);
-        const txHash2 = await connection.sendRawTransaction(txSigned2.serialize());
-        console.log("txHash: ", txHash2);
-        const confirmedTx2 = await connection.confirmTransaction(txHash2);
-        console.log("Confirmed TX: ", confirmedTx2);
-        toast.success(`NFT Minted & Transfered!`);
 
         // Update the loyalty program
         const pgrmTx = await program.methods.processPayment(new BN(amount), new PublicKey(mintPublicKey)).accounts({
