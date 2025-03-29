@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import { BN } from "@coral-xyz/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { doesCustomerOwnMerchantAsset, getCustomerAssets } from "../services/metaplex/utils";
-import { mintCustomerNft, sendTokens } from "../services/metaplex/mint";
+import { mintCustomerNft } from "../services/metaplex/mint";
 import { updateNft } from "../services/metaplex/update";
 
 const MerchantPage: React.FC = () => {
