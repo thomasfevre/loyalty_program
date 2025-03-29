@@ -2,6 +2,7 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { KeypairSigner } from '@metaplex-foundation/umi';
 import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { mockStorage } from '@metaplex-foundation/umi-storage-mock';
+import axios from 'axios';
 
 
 export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
@@ -133,5 +134,15 @@ export const oneTimeSetup = async () => {
 
     for (let i = 0; i < nftDetails.length; i++) {
         metadataUris[i] = await uploadMetadata(i);
+    }
+}
+
+async function getSolPriceInUsd(): Promise<number> {
+    try {
+        const response = await axios.get("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
+        return response.data.solana.usd;
+    } catch (error) {
+        console.error("Error fetching SOL price:", error);
+        return 0; // Return 0 in case of an error
     }
 }
