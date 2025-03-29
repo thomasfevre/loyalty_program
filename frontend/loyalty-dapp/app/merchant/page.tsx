@@ -109,11 +109,12 @@ const MerchantPage: React.FC = () => {
 
     (async () => {
       try {
-        if (status === "Payment received! Updating blockchain...") return;
-        const signatureInfo = await waitForPayment(reference, connection, wallet.publicKey!, amount);
-        toast.success("Payment received! Updating loyalty points...");
-        setStatus("Payment received! Updating blockchain...");
-        processLoyaltyUpdate(signatureInfo);
+        if (status === "Scan the QR Code to pay.") {
+          const signatureInfo = await waitForPayment(reference, connection, wallet.publicKey!, amount);
+          toast.success("Payment received! Updating loyalty points...");
+          setStatus("Payment received! Updating blockchain...");
+          processLoyaltyUpdate(signatureInfo);
+        }
       } catch (error) {
         toast.error("Error detecting payment");
       }
