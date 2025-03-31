@@ -11,6 +11,7 @@ export const metadata = {
 
 const links: { label: string; path: string }[] = [
   { label: 'Customer', path: '/customer' },
+  { label: 'Merchant', path: '/merchant' },
   { label: 'LoyaltyPay Program', path: '/LoyaltyPay' },
 ]
 

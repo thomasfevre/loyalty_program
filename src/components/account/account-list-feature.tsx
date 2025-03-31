@@ -1,15 +1,20 @@
-'use client'
+"use client";
 
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from "@solana/wallet-adapter-react";
 
-import { redirect } from 'next/navigation'
-import { WalletButton } from '../solana/solana-provider'
+import { redirect, usePathname } from "next/navigation";
+import { WalletButton } from "../solana/solana-provider";
 
 export default function AccountListFeature() {
-  const { publicKey } = useWallet()
+  const { publicKey } = useWallet();
+  const pathname = usePathname();
 
   if (publicKey) {
-    return redirect(`/customer/${publicKey.toString()}`)
+    if (pathname === "/customer") {
+      return redirect(`/customer/${publicKey.toString()}`);
+    } else if (pathname === "/merchant") {
+      return redirect(`/merchant/${publicKey.toString()}`);
+    }
   }
 
   return (
@@ -18,5 +23,5 @@ export default function AccountListFeature() {
         <WalletButton />
       </div>
     </div>
-  )
+  );
 }

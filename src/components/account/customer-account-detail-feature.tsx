@@ -18,7 +18,7 @@ import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import { deriveLoyaltyPDA } from "../LoyaltyPay/accountUtils/getPDAs";
 import { fetchNftWithMintAddress } from "../metaplex/utils";
 
-export default function AccountDetailFeature() {
+export default function CustomerAccountDetailFeature() {
   const [merchantPubKey, setMerchantPubKey] = useState<string>("");
   const [loyaltyCard, setLoyaltyCard] = useState<any>(null);
   const [nft, setNft] = useState<any>(null);
