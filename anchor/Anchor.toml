@@ -12,7 +12,7 @@ LoyaltyPay = "6WQoS7AUSzB9dBC1QKCbKRySxZuj6oVYUdTNHtkXYVio"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "DevNet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

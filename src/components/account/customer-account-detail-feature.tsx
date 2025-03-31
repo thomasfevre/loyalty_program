@@ -5,6 +5,8 @@ import { PublicKey } from "@solana/web3.js";
 import { useMemo, useState } from "react";
 
 import { useParams } from "next/navigation";
+import { Cluster } from "@solana/web3.js";
+import { useCluster } from "../cluster/cluster-data-access";
 
 import { ExplorerLink } from "../cluster/cluster-ui";
 import { AppHero, ellipsify } from "../ui/ui-layout";
@@ -23,6 +25,7 @@ export default function CustomerAccountDetailFeature() {
   const [loyaltyCard, setLoyaltyCard] = useState<any>(null);
   const [nft, setNft] = useState<any>(null);
   const params = useParams();
+  const { cluster } = useCluster();
   const { program } = useLoyaltyPayProgram();
   const address = useMemo(() => {
     if (!params.address) {
@@ -47,7 +50,11 @@ export default function CustomerAccountDetailFeature() {
     try {
       // Program
       const merchantKey = new PublicKey(merchantPubKey);
-      const loyaltyPDA = deriveLoyaltyPDA(address, merchantKey);
+      const loyaltyPDA = deriveLoyaltyPDA(
+        address,
+        merchantKey,
+        cluster.network as Cluster
+      );
 
       const loyaltyCardAccount = await program.account.loyaltyCard.fetch(
         loyaltyPDA

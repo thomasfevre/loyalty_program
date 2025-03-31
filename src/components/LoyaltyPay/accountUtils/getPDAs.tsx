@@ -11,9 +11,8 @@ import {
 } from "@solana/web3.js";
 import { BigNumber } from "bignumber.js";
 
-export const deriveLoyaltyPDA = (customer: PublicKey, merchant: PublicKey) => {
-  const { cluster } = useCluster();
-  const programId = getLoyaltyPayProgramId(cluster.network as Cluster);
+export const deriveLoyaltyPDA = (customer: PublicKey, merchant: PublicKey, network: Cluster) => {
+  const programId = getLoyaltyPayProgramId(network);
   return PublicKey.findProgramAddressSync(
     [Buffer.from("loyalty"), customer.toBytes(), merchant.toBytes()],
     programId

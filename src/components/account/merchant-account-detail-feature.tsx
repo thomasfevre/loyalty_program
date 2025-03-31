@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { PublicKey as MetaplexPublicKey } from "@metaplex-foundation/umi";
+import { useCluster } from "../cluster/cluster-data-access";
+import { Cluster } from "@solana/web3.js";
 import { ExplorerLink } from "../cluster/cluster-ui";
 import { AppHero, ellipsify } from "../ui/ui-layout";
 import { AccountButtons } from "./account-ui";
@@ -33,6 +35,7 @@ export default function MerchantAccountDetailFeature() {
   const [amount, setAmount] = useState(1000000); // 0.001 SOL in lamports
   const [qrCode, setQRCode] = useState<string | null>(null);
   const { program } = useLoyaltyPayProgram();
+  const { cluster } = useCluster();
   const [status, setStatus] = useState("Set the amount to be paid :");
   const [reference, setReference] = useState<PublicKey | null>(null);
   const params = useParams();
@@ -90,7 +93,7 @@ export default function MerchantAccountDetailFeature() {
       // Check if the customer has a PDA with the merchant
       let loyaltyCardAccount;
       try {
-        const customerPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey);
+        const customerPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey, cluster.network as Cluster);
         loyaltyCardAccount = await program.account.loyaltyCard.fetch(
           customerPDA
         );
