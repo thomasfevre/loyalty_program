@@ -1,6 +1,5 @@
 "use client";
 
-import { useCluster } from "@/components/cluster/cluster-data-access";
 import { getLoyaltyPayProgramId } from "@project/anchor";
 import { encodeURL, findReference, validateTransfer } from "@solana/pay";
 import {
@@ -11,7 +10,11 @@ import {
 } from "@solana/web3.js";
 import { BigNumber } from "bignumber.js";
 
-export const deriveLoyaltyPDA = (customer: PublicKey, merchant: PublicKey, network: Cluster) => {
+export const deriveLoyaltyPDA = (
+  customer: PublicKey,
+  merchant: PublicKey,
+  network: Cluster
+) => {
   const programId = getLoyaltyPayProgramId(network);
   return PublicKey.findProgramAddressSync(
     [Buffer.from("loyalty"), customer.toBytes(), merchant.toBytes()],
@@ -26,13 +29,14 @@ export const waitForPayment = async (
   amount: number
 ) => {
   const start = Date.now();
-  while (Date.now() - start < 30000) {
+  while (Date.now() - start < 60000) {
     try {
       console.log("Checking for payment...");
       const signatureInfo = await findReference(connection, reference, {
         finality: "confirmed",
       });
       console.log("Payment detected:", signatureInfo);
+      console.log({ amount });
       const validateTransferTX = await validateTransfer(
         connection,
         signatureInfo.signature,

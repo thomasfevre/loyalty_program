@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PublicKey as MetaplexPublicKey } from "@metaplex-foundation/umi";
 import { useCluster } from "../cluster/cluster-data-access";
-import { Cluster } from "@solana/web3.js";
+import { Cluster, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { ExplorerLink } from "../cluster/cluster-ui";
 import { AppHero, ellipsify } from "../ui/ui-layout";
 import { AccountButtons } from "./account-ui";
@@ -32,7 +32,7 @@ import { BN } from "bn.js";
 export default function MerchantAccountDetailFeature() {
   const wallet = useAnchorWallet();
   const { connection } = useConnection();
-  const [amount, setAmount] = useState(1000000); // 0.001 SOL in lamports
+  const [amount, setAmount] = useState(0.001); // 0.001 SOL in lamports
   const [qrCode, setQRCode] = useState<string | null>(null);
   const { program } = useLoyaltyPayProgram();
   const { cluster } = useCluster();
@@ -64,7 +64,7 @@ export default function MerchantAccountDetailFeature() {
 
     const url = generateSolanaPayURL(
       wallet.publicKey,
-      amount,
+      amount * LAMPORTS_PER_SOL,
       referenceKey
     ).toString();
     setQRCode(url);
@@ -85,15 +85,19 @@ export default function MerchantAccountDetailFeature() {
     }
     console.log(
       "TODO Processing loyalty update...",
-      wallet.publicKey,
-      payerPubKey
+      wallet.publicKey.toString(),
+      payerPubKey.toString()
     );
 
     try {
       // Check if the customer has a PDA with the merchant
       let loyaltyCardAccount;
       try {
-        const customerPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey, cluster.network as Cluster);
+        const customerPDA = deriveLoyaltyPDA(
+          wallet.publicKey,
+          payerPubKey,
+          cluster.network as Cluster
+        );
         loyaltyCardAccount = await program.account.loyaltyCard.fetch(
           customerPDA
         );
@@ -103,13 +107,13 @@ export default function MerchantAccountDetailFeature() {
       }
 
       // Check if the customer already own an NFT from the merchant
-      const { data: customerNft } = await doesCustomerOwnMerchantAsset(
+      const customerHasNft = await doesCustomerOwnMerchantAsset(
         payerPubKey.toString() as MetaplexPublicKey,
         wallet.publicKey.toString() as MetaplexPublicKey
       );
-      console.log("Customer nft ?: ", customerNft);
+      console.log("Customer has nft?: ", customerHasNft);
       // If not, mint a new NFT
-      if (customerNft === false && !loyaltyCardAccount) {
+      if (!customerHasNft && !loyaltyCardAccount) {
         console.log("Minting NFT...");
         const { tx, mintPublicKey } = await mintCustomerNft(
           wallet,
@@ -130,7 +134,10 @@ export default function MerchantAccountDetailFeature() {
 
         // Update the loyalty program
         const pgrmTx = await program.methods
-          .processPayment(new BN(amount), new PublicKey(mintPublicKey))
+          .processPayment(
+            new BN(amount * LAMPORTS_PER_SOL),
+            new PublicKey(mintPublicKey)
+          )
           .accounts({
             customer: payerPubKey,
             merchant: wallet.publicKey,
@@ -141,8 +148,8 @@ export default function MerchantAccountDetailFeature() {
       } else {
         // If yes, upgrade the NFT
 
-        // const update = await updateNft(1, customerNft., wallet);
-        console.log("Updated NFT:", customerNft);
+        // const update = await updateNft(1, wallet);
+        console.log("Customer has NFT:", customerHasNft);
       }
 
       // else upgrade the nft uri a new reward tier is reached
@@ -163,9 +170,9 @@ export default function MerchantAccountDetailFeature() {
         if (status === "Scan the QR Code to pay.") {
           const signatureInfo = await waitForPayment(
             reference,
-            connection!,
-            wallet.publicKey!,
-            amount
+            connection,
+            wallet.publicKey,
+            amount * LAMPORTS_PER_SOL
           );
           toast.success("Payment received! Updating loyalty points...");
           setStatus("Payment received! Updating blockchain...");
@@ -207,7 +214,7 @@ export default function MerchantAccountDetailFeature() {
               <div className="my-4">
                 <p className="text-lg mb-2">{status}</p>
                 <label className="block text-sm font-medium  mb-1">
-                  Amount (lamports):
+                  Amount (SOL):
                 </label>
                 <input
                   type="number"

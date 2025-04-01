@@ -28,7 +28,7 @@ import {
 import { oneTimeSetup, umi } from "./constants";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
-export async function fetchNftWithMintAddress(mintAddress: MetaplexPublicKey) {
+export function fetchNftWithMintAddress(mintAddress: MetaplexPublicKey) {
   const { connection } = useConnection();
   return useQuery({
     queryKey: ["get-nft", { endpoint: connection.rpcEndpoint, mintAddress }],
@@ -43,16 +43,24 @@ export async function fetchNftWithMintAddress(mintAddress: MetaplexPublicKey) {
   });
 }
 
-export async function getCustomerAssets(mintPubKey: MetaplexPublicKey) {
+// Hook version for React components
+export function useCustomerAssets(mintPubKey: MetaplexPublicKey) {
   console.log("Getting assets for ", mintPubKey.toString());
 
   return useQuery({
     queryKey: ["get-asset", { endpoint: umi, mintPubKey }],
-    queryFn: async () => fetchDigitalAsset(umi, mintPubKey),
+    queryFn: () => fetchCustomerAssets(mintPubKey),
   });
 }
 
-export async function doesCustomerOwnMerchantAsset(
+// Pure async function for non-React contexts
+export async function fetchCustomerAssets(mintPubKey: MetaplexPublicKey) {
+  console.log("Fetching assets for ", mintPubKey.toString());
+  return await fetchDigitalAsset(umi, mintPubKey);
+}
+
+// Hook version for use in React components
+export function useCustomerMerchantAssetOwnership(
   customerPubKey: MetaplexPublicKey,
   merchantPubKey: MetaplexPublicKey
 ) {
@@ -61,61 +69,80 @@ export async function doesCustomerOwnMerchantAsset(
       "does-customer-own-merchant-asset",
       { customerPubKey, merchantPubKey },
     ],
-    queryFn: async () => {
-      const { data } = await getCustomerAssets(customerPubKey);
-      if (!data) return false;
-      const authority = unwrapOption(data.mint.mintAuthority);
-      if (!authority) return false;
-      return authority.toString() === merchantPubKey.toString();
-    },
+    queryFn: () => doesCustomerOwnMerchantAsset(customerPubKey, merchantPubKey)
   });
 }
 
-async function createNft(metadataUri: string, signer: Signer) {
+// Async function version for use outside of React components
+export async function doesCustomerOwnMerchantAsset(
+  customerPubKey: MetaplexPublicKey,
+  merchantPubKey: MetaplexPublicKey
+): Promise<boolean> {
+  try {
+    const data = await fetchCustomerAssets(customerPubKey);
+    if (!data) return false;
+    const authority = unwrapOption(data.mint.mintAuthority);
+    if (!authority) return false;
+    return authority.toString() === merchantPubKey.toString();
+  } catch (error) {
+    console.error("Error checking customer merchant asset ownership:", error);
+    return false;
+  }
+}
+
+// Hook version for React components
+function useCreateNft(metadataUri: string, signer: Signer) {
   return useQuery({
     queryKey: ["create-nft", { endpoint: umi, metadataUri }],
-    queryFn: async () => {
-      const mint = generateSigner(umi);
-      const tx = await createV1(umi, {
-        mint,
-        authority: signer,
-        name: "Loyalty Pay NFT",
-        uri: metadataUri,
-        sellerFeeBasisPoints: percentAmount(0),
-        tokenStandard: TokenStandard.NonFungible,
-      })
-        .useV0()
-        .buildWithLatestBlockhash(umi);
-
-      const web3JsCreateTx = toWeb3JsLegacyTransaction(tx);
-
-      // const signedTX = await mint.signTransaction(tx);
-      console.log(`Created NFT: ${mint.publicKey.toString()}`);
-      return { web3JsCreateTx, mint };
-    },
+    queryFn: () => createNftAsync(metadataUri, signer),
   });
 }
 
-async function mintNft(mint: KeypairSigner, signer: Signer, recipient: string) {
+// Pure async function for non-React contexts
+export async function createNftAsync(metadataUri: string, signer: Signer) {
+  const mint = generateSigner(umi);
+  const tx = await createV1(umi, {
+    mint,
+    authority: signer,
+    name: "Loyalty Pay NFT",
+    uri: metadataUri,
+    sellerFeeBasisPoints: percentAmount(0),
+    tokenStandard: TokenStandard.NonFungible,
+  })
+    .useV0()
+    .buildWithLatestBlockhash(umi);
+
+  const web3JsCreateTx = toWeb3JsLegacyTransaction(tx);
+
+  // const signedTX = await mint.signTransaction(tx);
+  console.log(`Created NFT: ${mint.publicKey.toString()}`);
+  return { web3JsCreateTx, mint };
+}
+
+// Hook version for React components
+function useMintNft(mint: KeypairSigner, signer: Signer, recipient: string) {
   return useQuery({
     queryKey: ["mint-nft", { endpoint: umi, mint, signer, recipient }],
-    queryFn: async () => {
-      const tx = await mintV1(umi, {
-        mint: mint.publicKey,
-        authority: signer,
-        amount: 1,
-        tokenOwner: umiPublicKey(recipient),
-        tokenStandard: TokenStandard.NonFungible,
-      })
-        .useV0()
-        .buildWithLatestBlockhash(umi);
-
-      const web3JsMintTx = toWeb3JsLegacyTransaction(tx);
-      // const signedTX = await mint.signTransaction(tx);
-      console.log(`Created NFT: ${mint.publicKey.toString()}`);
-      return { web3JsMintTx, mint };
-    },
+    queryFn: () => mintNftAsync(mint, signer, recipient),
   });
+}
+
+// Pure async function for non-React contexts
+export async function mintNftAsync(mint: KeypairSigner, signer: Signer, recipient: string) {
+  const tx = await mintV1(umi, {
+    mint: mint.publicKey,
+    authority: signer,
+    amount: 1,
+    tokenOwner: umiPublicKey(recipient),
+    tokenStandard: TokenStandard.NonFungible,
+  })
+    .useV0()
+    .buildWithLatestBlockhash(umi);
+
+  const web3JsMintTx = toWeb3JsLegacyTransaction(tx);
+  // const signedTX = await mint.signTransaction(tx);
+  console.log(`Created NFT: ${mint.publicKey.toString()}`);
+  return { web3JsMintTx, mint };
 }
 
 // Wrapper function to mint and transfer the NFT
@@ -130,25 +157,27 @@ export async function mintCustomerNft(
     if (metadataUris.length === 0) {
       await oneTimeSetup();
     }
-    const { data } = await createNft(metadataUris[0], merchantWallet as Signer);
+    
+    // Use the async versions directly instead of React hooks
+    const createResult = await createNftAsync(metadataUris[0], merchantWallet as Signer);
 
-    if (!data) {
+    if (!createResult) {
       throw new Error("Failed to create NFT");
     }
 
-    const { web3JsCreateTx: umiTx, mint } = data;
+    const { web3JsCreateTx: umiTx, mint } = createResult;
 
-    const { data: mintData } = await mintNft(
+    const mintResult = await mintNftAsync(
       mint,
       merchantWallet as Signer,
       recipient
     );
 
-    if (!mintData) {
+    if (!mintResult) {
       throw new Error("Failed to mint NFT");
     }
 
-    const { web3JsMintTx: umiMintTx } = mintData;
+    const { web3JsMintTx: umiMintTx } = mintResult;
 
     // Combine the transactions
     let tx = new Transaction().add(umiTx);
