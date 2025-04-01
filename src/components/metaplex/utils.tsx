@@ -28,19 +28,21 @@ import {
 import { oneTimeSetup, umi } from "./constants";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
-export function fetchNftWithMintAddress(mintAddress: MetaplexPublicKey) {
+// Hook version for React components
+export function useFetchNftWithMintAddress(mintAddress: MetaplexPublicKey) {
   const { connection } = useConnection();
   return useQuery({
     queryKey: ["get-nft", { endpoint: connection.rpcEndpoint, mintAddress }],
-    queryFn: async () => {
-      console.log(`Step 1 - Fetching existing NFT`);
-      const metadata = await fetchMetadataFromSeeds(umi, { mint: mintAddress });
-      console.log("metadata", metadata);
-      const asset = await fetchDigitalAsset(umi, mintAddress);
-      console.log("asset", asset);
-      return metadata;
-    },
+    queryFn: () => fetchNftWithMintAddressAsync(mintAddress),
   });
+}
+
+// Pure async function for non-React contexts
+export async function fetchNftWithMintAddressAsync(mintAddress: MetaplexPublicKey) {
+  console.log(`Step 1 - Fetching existing NFT`);
+  const metadata = await fetchMetadataFromSeeds(umi, { mint: mintAddress });
+  console.log("metadata", metadata);
+  return metadata;
 }
 
 // Hook version for React components

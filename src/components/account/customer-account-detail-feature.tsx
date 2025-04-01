@@ -18,7 +18,7 @@ import {
 import toast from "react-hot-toast";
 import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import { deriveLoyaltyPDA } from "../LoyaltyPay/accountUtils/getPDAs";
-import { fetchNftWithMintAddress } from "../metaplex/utils";
+import { fetchNftWithMintAddressAsync } from "../metaplex/utils";
 
 export default function CustomerAccountDetailFeature() {
   const [merchantPubKey, setMerchantPubKey] = useState<string>("");
@@ -64,7 +64,7 @@ export default function CustomerAccountDetailFeature() {
 
       // Nft
       if (loyaltyCardAccount.mintAddress) {
-        const { data: customerNft, error } = await fetchNftWithMintAddress(
+        const customerNft = await fetchNftWithMintAddressAsync(
           loyaltyCardAccount.mintAddress.toString() as MetaplexPublicKey
         );
 

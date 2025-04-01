@@ -192,8 +192,8 @@ export default function MerchantAccountDetailFeature() {
       <AppHero
         title={<></>}
         subtitle={
-          <div className="bg-green-500 width-fit shadow-md rounded-lg p-6 mb-6">
-            <p className="text-lg font-semibold mb-4">Customer Wallet:</p>
+          <div className="bg-blue-500 width-fit shadow-md rounded-lg p-6 mb-6">
+            <p className="text-lg font-semibold mb-4">Merchant Wallet:</p>
             <div className="my-4">
               <ExplorerLink
                 path={`account/${address}`}
