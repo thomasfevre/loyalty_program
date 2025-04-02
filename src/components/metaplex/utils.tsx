@@ -25,7 +25,7 @@ import {
   toWeb3JsLegacyTransaction,
   toWeb3JsKeypair,
 } from "@metaplex-foundation/umi-web3js-adapters";
-import { oneTimeSetup, umi } from "./constants";
+import { metadataUris, oneTimeSetup, umi } from "./constants";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
 // Hook version for React components
@@ -152,7 +152,6 @@ export async function mintCustomerNft(
   merchantWallet: unknown,
   recipient: string
 ) {
-  const metadataUris = ["https://example.com/metadata.json"];
   try {
     umi.use(signerIdentity(merchantWallet as Signer));
     // Mint the NFT

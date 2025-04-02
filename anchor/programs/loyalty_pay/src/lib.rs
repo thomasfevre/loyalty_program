@@ -1,25 +1,28 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{system_instruction, program::invoke};
-
+use anchor_lang::solana_program::{program::invoke, system_instruction};
+use mpl_token_metadata::ID as mpl_metadata_id;
 declare_id!("6WQoS7AUSzB9dBC1QKCbKRySxZuj6oVYUdTNHtkXYVio");
 
 #[program]
 pub mod loyalty_program {
     use super::*;
 
-    pub fn process_payment(ctx: Context<ProcessPayment>, amount: u64, mintAddress: Pubkey) -> Result<()> {
+    pub fn process_payment(
+        ctx: Context<ProcessPayment>,
+        amount: u64,
+        mint_address: Pubkey,
+    ) -> Result<()> {
         let loyalty_card = &mut ctx.accounts.loyalty_card;
         let customer = &ctx.accounts.customer;
         let merchant = &ctx.accounts.merchant;
         let system_program = &ctx.accounts.system_program;
-
         // If this is a new loyalty card, initialize it.
         if loyalty_card.loyalty_points == 0 {
             loyalty_card.merchant = merchant.key();
             loyalty_card.customer = customer.key();
-            loyalty_card.threshold = 100;       // Example threshold value (adjust as needed)
-            loyalty_card.refund_percentage = 15;  // 15% refund
-            loyalty_card.mintAddress = mintAddress;
+            loyalty_card.threshold = 100; // Example threshold value (adjust as needed)
+            loyalty_card.refund_percentage = 15; // 15% refund
+            loyalty_card.mint_address = mint_address;
         }
 
         // Save the current points, then add the new payment amount.
@@ -30,7 +33,9 @@ pub mod loyalty_program {
             .ok_or(ErrorCode::Overflow)?;
 
         // Check if threshold is just reached or exceeded.
-        if previous_points < loyalty_card.threshold && loyalty_card.loyalty_points >= loyalty_card.threshold {
+        if previous_points < loyalty_card.threshold
+            && loyalty_card.loyalty_points >= loyalty_card.threshold
+        {
             // Calculate refund (15% of the current payment amount).
             let refund = (amount as u128 * loyalty_card.refund_percentage as u128 / 100) as u64;
             msg!("Threshold reached: refunding {} lamports", refund);
@@ -52,7 +57,10 @@ pub mod loyalty_program {
                 .ok_or(ErrorCode::Overflow)?;
         }
 
-        msg!("Loyalty card updated. New loyalty points: {}", loyalty_card.loyalty_points);
+        msg!(
+            "Loyalty card updated. New loyalty points: {}",
+            loyalty_card.loyalty_points
+        );
         Ok(())
     }
 }
@@ -68,11 +76,11 @@ pub struct ProcessPayment<'info> {
     )]
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
-    #[account(mut, signer)]  // Ensure merchant is a signer
-    pub merchant: Signer<'info>,  
+    #[account(mut, signer)] // Ensure merchant is a signer
+    pub merchant: Signer<'info>,
 
-    #[account(mut)]  // Ensure customer is mutable
-    pub customer: SystemAccount<'info>,  
+    #[account(mut)] // Ensure customer is mutable
+    pub customer: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -84,7 +92,7 @@ pub struct LoyaltyCard {
     pub loyalty_points: u64,
     pub threshold: u64,
     pub refund_percentage: u8,
-    pub mintAddress: Pubkey
+    pub mint_address: Pubkey,
 }
 
 impl LoyaltyCard {
