@@ -28,51 +28,29 @@ import {
 import { metadataUris, oneTimeSetup, umi } from "./constants";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
-// Hook version for React components
-export function useFetchNftWithMintAddress(mintAddress: MetaplexPublicKey) {
-  const { connection } = useConnection();
-  return useQuery({
-    queryKey: ["get-nft", { endpoint: connection.rpcEndpoint, mintAddress }],
-    queryFn: () => fetchNftWithMintAddressAsync(mintAddress),
-  });
-}
-
 // Pure async function for non-React contexts
-export async function fetchNftWithMintAddressAsync(mintAddress: MetaplexPublicKey) {
-  console.log(`Step 1 - Fetching existing NFT`);
-  const metadata = await fetchMetadataFromSeeds(umi, { mint: mintAddress });
-  console.log("metadata", metadata);
-  return metadata;
-}
-
-// Hook version for React components
-export function useCustomerAssets(mintPubKey: MetaplexPublicKey) {
-  console.log("Getting assets for ", mintPubKey.toString());
-
-  return useQuery({
-    queryKey: ["get-asset", { endpoint: umi, mintPubKey }],
-    queryFn: () => fetchCustomerAssets(mintPubKey),
-  });
+export async function fetchNftWithMintAddressAsync(
+  mintAddress: MetaplexPublicKey
+) {
+  console.log(`Step 1 - Fetching existing NFT : ${mintAddress.toString()}`);
+  try {
+    const metadata = await fetchMetadataFromSeeds(umi, { mint: mintAddress });
+    console.log("metadata", metadata);
+    return metadata;
+  } catch (err) {
+    console.error(
+      "Failed to fetch NFT with mint address",
+      mintAddress.toString(),
+      err
+    );
+    return null;
+  }
 }
 
 // Pure async function for non-React contexts
 export async function fetchCustomerAssets(mintPubKey: MetaplexPublicKey) {
   console.log("Fetching assets for ", mintPubKey.toString());
   return await fetchDigitalAsset(umi, mintPubKey);
-}
-
-// Hook version for use in React components
-export function useCustomerMerchantAssetOwnership(
-  customerPubKey: MetaplexPublicKey,
-  merchantPubKey: MetaplexPublicKey
-) {
-  return useQuery({
-    queryKey: [
-      "does-customer-own-merchant-asset",
-      { customerPubKey, merchantPubKey },
-    ],
-    queryFn: () => doesCustomerOwnMerchantAsset(customerPubKey, merchantPubKey)
-  });
 }
 
 // Async function version for use outside of React components
@@ -90,14 +68,6 @@ export async function doesCustomerOwnMerchantAsset(
     console.error("Error checking customer merchant asset ownership:", error);
     return false;
   }
-}
-
-// Hook version for React components
-function useCreateNft(metadataUri: string, signer: Signer) {
-  return useQuery({
-    queryKey: ["create-nft", { endpoint: umi, metadataUri }],
-    queryFn: () => createNftAsync(metadataUri, signer),
-  });
 }
 
 // Pure async function for non-React contexts
@@ -130,7 +100,11 @@ function useMintNft(mint: KeypairSigner, signer: Signer, recipient: string) {
 }
 
 // Pure async function for non-React contexts
-export async function mintNftAsync(mint: KeypairSigner, signer: Signer, recipient: string) {
+export async function mintNftAsync(
+  mint: KeypairSigner,
+  signer: Signer,
+  recipient: string
+) {
   const tx = await mintV1(umi, {
     mint: mint.publicKey,
     authority: signer,
@@ -158,9 +132,12 @@ export async function mintCustomerNft(
     if (metadataUris.length === 0) {
       await oneTimeSetup();
     }
-    
+
     // Use the async versions directly instead of React hooks
-    const createResult = await createNftAsync(metadataUris[0], merchantWallet as Signer);
+    const createResult = await createNftAsync(
+      metadataUris[0],
+      merchantWallet as Signer
+    );
 
     if (!createResult) {
       throw new Error("Failed to create NFT");
