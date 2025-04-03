@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import { deriveLoyaltyPDA } from "../LoyaltyPay/accountUtils/getPDAs";
 import { fetchNftWithMintAddressAsync } from "../metaplex/utils";
+import axios from 'axios';
 
 export default function CustomerAccountDetailFeature() {
   const [merchantPubKey, setMerchantPubKey] = useState<string>("");
@@ -72,15 +73,14 @@ export default function CustomerAccountDetailFeature() {
         // get the metadata of the NFT (fetch from customerNft.uri)
         if (customerNft?.uri) {
           try {
-            const response = await fetch(customerNft.uri, {
-              headers: { Accept: "application/json" },
+            const response = await axios.get(customerNft.uri, {
+              headers: { "Accept": "application/json" }
             });
-            const data = await response.json();
-            console.log("Raw response:", data);
-            console.log("Response type:", typeof data);
+            console.log("Raw response:", response.data);
+            console.log("Response type:", typeof response.data);
 
             // Ensure it's a string before parsing
-            let metadataString = data;
+            let metadataString = response.data;
 
             // Convert to valid JSON format (fixing single quotes, backticks, and property labels)
             metadataString = metadataString
@@ -93,7 +93,7 @@ export default function CustomerAccountDetailFeature() {
             setNft(parsedMetadata);
 
             console.log("Parsed metadata:", parsedMetadata);
-            console.log("NFT Name:", parsedMetadata.attributes[0].value); // Example: Access the 'Reward Tier' attribute
+            console.log("NFT Name:", parsedMetadata.attributes[0].value);  // Example: Access the 'Reward Tier' attribute
           } catch (error) {
             console.error("Failed to fetch or parse NFT metadata:", error);
             toast.error("Failed to parse NFT metadata.");

@@ -11,8 +11,11 @@
 
 # next.js
 /.next/
+.next/
+/frontend/loyalty-dapp/.next/
+/frontend/loyalty-dapp/node_modules
+/frontend/loyalty-dapp/out/
 /out/
-
 # production
 /build
 
@@ -37,3 +40,13 @@ next-env.d.ts
 tmp
 
 .env
+.qodo
+
+
+# rust
+/rust/loyalty_program/.anchor
+/rust/loyalty_program/node_modules
+/rust/loyalty_program/target
+/rust/test-ledger
+/rust/test-ledger-archive
+/target
