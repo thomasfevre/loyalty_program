@@ -3,6 +3,7 @@
 import { PublicKey as MetaplexPublicKey } from "@metaplex-foundation/umi";
 import { PublicKey } from "@solana/web3.js";
 import { useMemo, useState } from "react";
+import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 
 import { useParams } from "next/navigation";
 import { Cluster } from "@solana/web3.js";
@@ -28,16 +29,24 @@ export default function CustomerAccountDetailFeature() {
   const params = useParams();
   const { cluster } = useCluster();
   const { program } = useLoyaltyPayProgram();
+  const { connected  } = useWallet();
+  const wallet = useAnchorWallet();
+
   const address = useMemo(() => {
+    console.log("wallet address", wallet?.publicKey?.toString());
     if (!params.address) {
       return;
     }
     try {
-      return new PublicKey(params.address);
+      const paramAddress = new PublicKey(params.address);
+      if (wallet?.publicKey) {
+        return wallet.publicKey;
+      }
+      return new PublicKey(paramAddress);
     } catch (e) {
       console.log(`Invalid public key`, e);
     }
-  }, [params]);
+  }, [params, connected]);
   if (!address) {
     return <div>Error loading account</div>;
   }

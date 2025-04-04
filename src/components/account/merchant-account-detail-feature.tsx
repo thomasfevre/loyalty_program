@@ -11,7 +11,7 @@ import { AccountButtons } from "./account-ui";
 import {
   useAnchorWallet,
   useConnection,
-  useWallet,
+  useWallet
 } from "@solana/wallet-adapter-react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { useParams } from "next/navigation";
@@ -31,6 +31,7 @@ import { BN } from "bn.js";
 
 export default function MerchantAccountDetailFeature() {
   const wallet = useAnchorWallet();
+  const { connected  } = useWallet();
   const { connection } = useConnection();
   const [amount, setAmount] = useState(0.001); // 0.001 SOL in lamports
   const [qrCode, setQRCode] = useState<string | null>(null);
@@ -41,15 +42,20 @@ export default function MerchantAccountDetailFeature() {
   const params = useParams();
 
   const address = useMemo(() => {
+    console.log("wallet address", wallet?.publicKey?.toString());
     if (!params.address) {
       return;
     }
     try {
-      return new PublicKey(params.address);
+      const paramAddress = new PublicKey(params.address);
+      if (wallet?.publicKey) {
+        return wallet.publicKey;
+      }
+      return new PublicKey(paramAddress);
     } catch (e) {
       console.log(`Invalid public key`, e);
     }
-  }, [params]);
+  }, [params, connected]);
 
   const generatePaymentQR = () => {
     if (!wallet || !wallet.publicKey || !wallet.signTransaction) {

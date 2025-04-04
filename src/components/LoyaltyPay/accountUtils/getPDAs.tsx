@@ -55,7 +55,7 @@ export const waitForPayment = async (
       return payer;
     } catch (error) {
       // Wait for 1 second before checking again.
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
   throw new Error("Payment not detected within the timeout period.");
