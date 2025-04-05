@@ -30,7 +30,7 @@ The project aims to simplify Web3 adoption for businesses by making loyalty rewa
 
 ## Français
 En français :
-on a une page « merchant » où on se connecte avec phantom et on choisi le montant que l’on veut « facturer », on génère un Qr-code pour que le client le scanne.
+on a une page « merchant » où on se connecte avec phantom et on choisit le montant que l’on veut « facturer », on génère un Qr-code pour que le client le scanne.
 Ensuite on écoute la blockchain et dès que c’est validé —> on mint un soul bound NFT dynamic au client (+ création du PDA avec ses points de fidélité)
 Ensuite à chaque achat, ses points de fidélité augmentent et son NFT évolue en fonction de 4 niveaux ( cf les 4 images) 
 Une fois passé le dernier niveau, le client se verra rembourser un pourcentage (ex:15%) de son prochain achat (fonction du programme)
