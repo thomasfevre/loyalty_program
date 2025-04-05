@@ -33,7 +33,7 @@ export default function MerchantAccountDetailFeature() {
   const wallet = useAnchorWallet();
   const { connected  } = useWallet();
   const { connection } = useConnection();
-  const [amount, setAmount] = useState(0.001); // 0.001 SOL in lamports
+  const [amount, setAmount] = useState(1); // 1 USDC
   const [qrCode, setQRCode] = useState<string | null>(null);
   const { program } = useLoyaltyPayProgram();
   const { cluster } = useCluster();
@@ -70,7 +70,7 @@ export default function MerchantAccountDetailFeature() {
 
     const url = generateSolanaPayURL(
       wallet.publicKey,
-      amount * LAMPORTS_PER_SOL,
+      amount,
       referenceKey
     ).toString();
     setQRCode(url);
@@ -134,14 +134,22 @@ export default function MerchantAccountDetailFeature() {
           txSigned.serialize()
         );
         console.log("txHash: ", txHash);
-        const confirmedTx = await connection?.confirmTransaction(txHash!);
+        const confirmedTx = await connection?.confirmTransaction( txSigned.toString(), "confirmed");
+        if (!confirmedTx) {
+          throw new Error("Transaction not confirmed");
+        }
         console.log("Confirmed TX: ", confirmedTx);
         console.log("Minted NFT:", mintPublicKey);
+
+        // const customerAta = await getAssociatedTokenAddress(payerPubKey, USDC_MINT_ADDRESS);
+        // const merchantAta = await getAssociatedTokenAddress(wallet.publicKey, USDC_MINT_ADDRESS);
+        // console.log("Customer ATA: ", customerAta.toString());
+        // console.log("Merchant ATA: ", merchantAta.toString());
 
         // Update the loyalty program
         const pgrmTx = await program.methods
           .processPayment(
-            new BN(amount * LAMPORTS_PER_SOL),
+            new BN(amount),
             new PublicKey(mintPublicKey)
           )
           .accounts({
@@ -178,7 +186,7 @@ export default function MerchantAccountDetailFeature() {
             reference,
             connection,
             wallet.publicKey,
-            amount * LAMPORTS_PER_SOL
+            amount
           );
           toast.success("Payment received! Updating loyalty points...");
           setStatus("Payment received! Updating blockchain...");
@@ -220,7 +228,7 @@ export default function MerchantAccountDetailFeature() {
               <div className="my-4">
                 <p className="text-lg mb-2">{status}</p>
                 <label className="block text-sm font-medium  mb-1">
-                  Amount (SOL):
+                  Amount (USDC):
                 </label>
                 <input
                   type="number"

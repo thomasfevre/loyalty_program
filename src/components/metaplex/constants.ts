@@ -1,7 +1,9 @@
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
+import { PublicKey } from '@solana/web3.js';
 
 export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
+export const USDC_MINT_ADDRESS = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'); // USDC mint address on Solana devnet
 export const umi = createUmi(NETWORK!, { commitment: 'confirmed' }); 
 umi.use(mplTokenMetadata());
 

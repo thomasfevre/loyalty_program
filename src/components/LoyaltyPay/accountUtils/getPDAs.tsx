@@ -9,6 +9,25 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 import { BigNumber } from "bignumber.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+
+/**
+ * Derive the Associated Token Account (ATA) address
+ * for a given wallet and token mint.
+ */
+export const getAssociatedTokenAddress = (
+  wallet: PublicKey,
+  mint: PublicKey
+): PublicKey => {
+  return PublicKey.findProgramAddressSync(
+    [
+      wallet.toBuffer(),                       // Owner of the ATA
+      TOKEN_PROGRAM_ID.toBuffer(),             // Token program
+      mint.toBuffer(),                         // Mint address
+    ],
+    ASSOCIATED_TOKEN_PROGRAM_ID                // Program that owns all ATAs
+  )[0];
+};
 
 export const deriveLoyaltyPDA = (
   customer: PublicKey,
@@ -33,7 +52,7 @@ export const waitForPayment = async (
     try {
       console.log("Checking for payment...");
       const signatureInfo = await findReference(connection, reference, {
-        finality: "confirmed",
+        finality: "finalized",
       });
       console.log("Payment detected:", signatureInfo);
       console.log({ amount });
@@ -42,7 +61,7 @@ export const waitForPayment = async (
         signatureInfo.signature,
         {
           recipient: merchantPubKey,
-          amount: new BigNumber(amount / LAMPORTS_PER_SOL),
+          amount: new BigNumber(amount),
           reference: [reference],
         }
       );
@@ -70,7 +89,7 @@ export const generateSolanaPayURL = (
 
 return encodeURL({
   recipient: merchant,
-  amount: new BigNumber(amount), // 5 USDC
+  amount: new BigNumber(amount),
   splToken: usdcMint,
   reference,
   label: "My Shop",

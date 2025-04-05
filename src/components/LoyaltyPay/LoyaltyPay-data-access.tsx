@@ -42,11 +42,15 @@ export function useLoyaltyPayProgram() {
       mintPublicKey,
       customer,
       merchant,
+      usdc_mint,
     }: {
       amount: number;
       mintPublicKey: PublicKey;
       customer: PublicKey;
       merchant: PublicKey;
+      customer_usdc_ata: PublicKey;
+      merchant_usdc_ata: PublicKey;
+      usdc_mint: PublicKey;
     }) =>
       program.methods
         .processPayment(new BN(amount), mintPublicKey)
