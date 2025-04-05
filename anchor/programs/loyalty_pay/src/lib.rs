@@ -1,7 +1,9 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{program::invoke, system_instruction};
-use mpl_token_metadata::ID as mpl_metadata_id;
-declare_id!("6WQoS7AUSzB9dBC1QKCbKRySxZuj6oVYUdTNHtkXYVio");
+use anchor_spl::token::{transfer, Token, TokenAccount, Transfer};
+use crate::constants::USDC_MINT;
+use anchor_lang::solana_program::pubkey;
+
+declare_id!("DcWhp6UCMTLRmK6sKGQbuXtnk4Ss1YpxS7Nf7LEsUKEY");
 
 #[program]
 pub mod loyalty_program {
@@ -15,7 +17,7 @@ pub mod loyalty_program {
         let loyalty_card = &mut ctx.accounts.loyalty_card;
         let customer = &ctx.accounts.customer;
         let merchant = &ctx.accounts.merchant;
-        let system_program = &ctx.accounts.system_program;
+
         // If this is a new loyalty card, initialize it.
         if loyalty_card.loyalty_points == 0 {
             loyalty_card.merchant = merchant.key();
@@ -38,17 +40,19 @@ pub mod loyalty_program {
         {
             // Calculate refund (15% of the current payment amount).
             let refund = (amount as u128 * loyalty_card.refund_percentage as u128 / 100) as u64;
-            msg!("Threshold reached: refunding {} lamports", refund);
+            msg!("Threshold reached: refunding {} USDC", refund);
 
-            let ix = system_instruction::transfer(&merchant.key(), &customer.key(), refund);
-            invoke(
-                &ix,
-                &[
-                    merchant.to_account_info(), // Ensure it's mutable and signed
-                    customer.to_account_info(),
-                    system_program.to_account_info(),
-                ],
-            )?;
+            // Perform USDC refund transfer
+            let cpi_accounts = Transfer {
+                from: ctx.accounts.merchant_usdc_ata.to_account_info(),
+                to: ctx.accounts.customer_usdc_ata.to_account_info(),
+                authority: ctx.accounts.merchant.to_account_info(),
+            };
+
+            let cpi_ctx =
+                CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+
+            transfer(cpi_ctx, refund)?;
 
             // Update loyalty points after refund --> set to 0
             loyalty_card.loyalty_points = loyalty_card
@@ -63,6 +67,12 @@ pub mod loyalty_program {
         );
         Ok(())
     }
+
+    pub fn close_loyalty_card(_ctx: Context<CloseLoyaltyCard>) -> Result<()> {
+        msg!("Loyalty card closed and rent refunded to merchant.");
+        Ok(())
+    }
+
 }
 
 #[derive(Accounts)]
@@ -76,17 +86,59 @@ pub struct ProcessPayment<'info> {
     )]
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
-    #[account(mut, signer)] // Ensure merchant is a signer
-    pub merchant: Signer<'info>,
-
-    #[account(mut)] // Ensure customer is mutable
+    #[account(mut)]
     pub customer: SystemAccount<'info>,
+
+    #[account(mut, signer)]
+    pub merchant: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = merchant,
+    )]
+    pub merchant_usdc_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = customer,
+    )]
+    pub customer_usdc_ata: Account<'info, TokenAccount>,
+
+    /// CHECK: verified by constraint
+    #[account(
+        address = USDC_MINT
+    )]
+    pub usdc_mint: AccountInfo<'info>,
+
+    pub token_program: Program<'info, Token>,
 
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct CloseLoyaltyCard<'info> {
+    #[account(
+        mut,
+        close = merchant, // refund rent to merchant
+        seeds = [b"loyalty", customer.key().as_ref(), merchant.key().as_ref()],
+        bump,
+        has_one = customer,
+        has_one = merchant
+    )]
+    pub loyalty_card: Account<'info, LoyaltyCard>,
+
+    #[account(mut, signer)]
+    pub customer: AccountInfo<'info>,
+
+    #[account(mut)]
+    pub merchant: SystemAccount<'info>,
+}
+
 #[account]
 pub struct LoyaltyCard {
+    /// CHECK: The merchant account is verified and signed by the merchant, so it's safe.
     pub merchant: Pubkey,
     pub customer: Pubkey,
     pub loyalty_points: u64,
@@ -105,4 +157,12 @@ impl LoyaltyCard {
 pub enum ErrorCode {
     #[msg("Arithmetic overflow occurred.")]
     Overflow,
+
+    #[msg("Only the merchant who owns this card can close it.")]
+    Unauthorized,
+}
+
+pub mod constants {
+    use super::*;
+    pub const USDC_MINT: Pubkey = pubkey!("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
 }

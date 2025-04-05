@@ -66,11 +66,14 @@ export const generateSolanaPayURL = (
   amount: number,
   reference: PublicKey
 ) => {
-  return encodeURL({
-    recipient: merchant,
-    amount: new BigNumber(amount / LAMPORTS_PER_SOL), // Convert to SOL
-    reference: [reference], // Used to track payment
-    label: "Solana Merchant",
-    message: "Loyalty Payment",
-  });
+  const usdcMint = new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
+
+return encodeURL({
+  recipient: merchant,
+  amount: new BigNumber(amount), // 5 USDC
+  splToken: usdcMint,
+  reference,
+  label: "My Shop",
+  message: "Thanks for your purchase!",
+});
 };
