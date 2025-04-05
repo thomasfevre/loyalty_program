@@ -1,4 +1,55 @@
 # legacy-LoyaltyPay
+The project is a Solana-based loyalty rewards dApp that enables merchants to create on-chain loyalty programs for their customers.
+🛠️Already started : 🛠️
+
+https://github.com/thomasfevre/loyalty_program
+
+How It Works
+    
+Payment & NFT Minting
+•    Customers can scan a QR code or interact with the merchant’s system to make a Solana Pay transaction.
+•    Once the payment is completed, the system mints a soulbound, upgradable NFT to the customer’s wallet.
+•    This NFT acts as a dynamic loyalty card, recording transactions and updating its metadata with each purchase.
+Loyalty Tracking & Rewards
+•    Every time a customer makes a new payment, the NFT’s metadata updates to reflect the total amount spent.
+•    When a predefined spending threshold is reached, the system automatically grants a discount or cashback reward (e.g., 15% off the next purchase).
+
+
+Main Technologies Used
+
+✅ Solana Blockchain (for payments & NFT-based loyalty cards)
+✅ Anchor Framework (for smart contract development)
+✅ Umi & Metaplex (for NFT minting and metadata updates)
+✅ Solana Pay (for merchant-customer payments)
+✅ React (NextJs) & TypeScript (for the frontend)
+
+Potential Use Cases
+
+🔹 Coffee shops & restaurants → Customers earn rewards with each visit.
+The project aims to simplify Web3 adoption for businesses by making loyalty rewards seamless and automated on Solana. 🚀
+
+## Français
+En français :
+on a une page « merchant » où on se connecte avec phantom et on choisi le montant que l’on veut « facturer », on génère un Qr-code pour que le client le scanne.
+Ensuite on écoute la blockchain et dès que c’est validé —> on mint un soul bound NFT dynamic au client (+ création du PDA avec ses points de fidélité)
+Ensuite à chaque achat, ses points de fidélité augmentent et son NFT évolue en fonction de 4 niveaux ( cf les 4 images) 
+Une fois passé le dernier niveau, le client se verra rembourser un pourcentage (ex:15%) de son prochain achat (fonction du programme)
+
+### Loyalty Card Levels
+
+The loyalty program features four levels of NFT evolution based on customer spending. Below are the images representing each level:
+
+1. **Level 1**  
+    ![Level 1](./baguettes/common_2.png)
+
+2. **Level 2**  
+    ![Level 2](./baguettes/rare_4.png)
+
+3. **Level 3**  
+    ![Level 3](./baguettes/epic_1.png)
+
+4. **Level 4**  
+    ![Level 4](./baguettes/legendary_2.png)
 
 ## Getting Started
 
