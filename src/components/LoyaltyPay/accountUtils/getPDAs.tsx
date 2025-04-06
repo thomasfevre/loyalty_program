@@ -1,33 +1,19 @@
 "use client";
 
-import { getLoyaltyPayProgramId } from "@project/anchor";
-import { encodeURL, findReference, validateTransfer } from "@solana/pay";
+import { getLoyaltyPayProgramId, USDC_MINT_ADDRESS } from "@project/anchor";
+import { encodeURL, findReference, validateTransfer, ValidateTransferError } from "@solana/pay";
 import {
   Cluster,
+  ConfirmedSignatureInfo,
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
+  Transaction,
 } from "@solana/web3.js";
 import { BigNumber } from "bignumber.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { decodeInstruction, getAssociatedTokenAddress } from "@solana/spl-token";
 
-/**
- * Derive the Associated Token Account (ATA) address
- * for a given wallet and token mint.
- */
-export const getAssociatedTokenAddress = (
-  wallet: PublicKey,
-  mint: PublicKey
-): PublicKey => {
-  return PublicKey.findProgramAddressSync(
-    [
-      wallet.toBuffer(),                       // Owner of the ATA
-      TOKEN_PROGRAM_ID.toBuffer(),             // Token program
-      mint.toBuffer(),                         // Mint address
-    ],
-    ASSOCIATED_TOKEN_PROGRAM_ID                // Program that owns all ATAs
-  )[0];
-};
+
 
 export const deriveLoyaltyPDA = (
   customer: PublicKey,
@@ -56,13 +42,19 @@ export const waitForPayment = async (
       });
       console.log("Payment detected:", signatureInfo);
       console.log({ amount });
+
+      // Get the right reference array from the transaction
+      const referenceArray = await handlePaymentReferences(connection, signatureInfo, reference);
+      console.log("Reference array:", referenceArray);
+      
       const validateTransferTX = await validateTransfer(
         connection,
         signatureInfo.signature,
         {
           recipient: merchantPubKey,
           amount: new BigNumber(amount),
-          reference: [reference],
+          reference: referenceArray,
+          splToken: USDC_MINT_ADDRESS,
         }
       );
       console.log("Validating transfer...", validateTransferTX);
@@ -74,11 +66,37 @@ export const waitForPayment = async (
       return payer;
     } catch (error) {
       // Wait for 1 second before checking again.
+      console.log(error);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
   throw new Error("Payment not detected within the timeout period.");
 };
+
+const handlePaymentReferences = async (connection: Connection, signatureInfo: ConfirmedSignatureInfo, reference: PublicKey) => {
+  const response = await connection.getTransaction(signatureInfo.signature, { commitment: "finalized" });
+      if (!response?.transaction) {
+        throw new Error("Transaction response is undefined.");
+      }
+      const { message: testmessage, signatures } = response.transaction;
+      const transaction = Transaction.populate(testmessage, signatures);
+      const instructions = transaction.instructions.slice();
+      const instruction = instructions.pop();
+      const decodedInstruction = decodeInstruction(instruction!);
+      const extraKeys =  decodedInstruction.keys;
+      console.log("Decoded instruction:", decodedInstruction);
+      console.log("Extra keys:", extraKeys);
+      // log the extraKeys.multiSsigners
+      if ('multiSigners' in extraKeys) {
+        extraKeys.multiSigners.forEach((key) => {
+          console.log("Key:", key.pubkey.toString(), "isSigner:", key.isSigner, "isWritable:", key.isWritable);
+        });
+        return extraKeys.multiSigners.map((key) => key.pubkey);
+      } else {
+        console.log("No multiSigners found in extraKeys.");
+        return [reference];
+      }
+}
 
 export const generateSolanaPayURL = (
   merchant: PublicKey,

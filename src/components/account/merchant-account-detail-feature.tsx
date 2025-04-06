@@ -221,7 +221,7 @@ export default function MerchantAccountDetailFeature() {
           <AccountButtons address={address} />
         </div>
       </AppHero>
-      <div className="space-y-8">
+      <div className="flex justify-center">
         <div className="">
           {wallet?.publicKey ? (
             <>

@@ -29,3 +29,6 @@ export function getLoyaltyPayProgramId(cluster: Cluster) {
       return LOYALTY_PAY_PROGRAM_ID
   }
 }
+
+export const USDC_MINT_ADDRESS = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'); // USDC mint address on Solana devnet
+
