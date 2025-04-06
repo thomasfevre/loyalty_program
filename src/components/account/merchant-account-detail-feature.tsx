@@ -129,12 +129,18 @@ export default function MerchantAccountDetailFeature() {
           throw new Error("Wallet does not support signTransaction");
         }
         const txSigned = await wallet.signTransaction(tx);
-        console.log("txHash: ", txSigned);
+        console.log("tx Object: ", txSigned);
         const txHash = await connection?.sendRawTransaction(
           txSigned.serialize()
         );
         console.log("txHash: ", txHash);
-        const confirmedTx = await connection?.confirmTransaction( txSigned.toString(), "confirmed");
+        const latestBlockhash = await connection.getLatestBlockhash();
+        const confirmationStrategy = {
+          signature: txHash,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        };
+        const confirmedTx = await connection?.confirmTransaction( confirmationStrategy, "confirmed");
         if (!confirmedTx) {
           throw new Error("Transaction not confirmed");
         }

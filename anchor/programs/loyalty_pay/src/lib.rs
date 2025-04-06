@@ -3,7 +3,7 @@ use anchor_spl::token::{transfer, Token, TokenAccount, Transfer};
 use crate::constants::USDC_MINT;
 use anchor_lang::solana_program::pubkey;
 
-declare_id!("DcWhp6UCMTLRmK6sKGQbuXtnk4Ss1YpxS7Nf7LEsUKEY");
+declare_id!("DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc");
 
 #[program]
 pub mod loyalty_program {

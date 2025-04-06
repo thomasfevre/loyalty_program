@@ -118,6 +118,22 @@ export default function CustomerAccountDetailFeature() {
     }
   };
 
+  const closeLoyaltyCard = async () => {
+    if (!address) {
+      toast.error("Connect your wallet first.");
+      return;
+    }
+    try {
+      
+      await program.methods.closeLoyaltyCard().accounts({address, merchantPubKey}).rpc();
+      toast.success("Loyalty card closed successfully!");
+
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to close loyalty card.");
+    }
+  };
+
   return (
     <div>
       <AppHero
@@ -148,7 +164,7 @@ export default function CustomerAccountDetailFeature() {
               type="text"
               value={merchantPubKey}
               onChange={(e) => setMerchantPubKey(e.target.value)}
-              className="border border-gray-300 rounded-md p-2 w-full max-w-md"
+              className="border border-gray-300 rounded-md p-2 w-full max-w-xl"
             />
           </div>
           <button
@@ -203,7 +219,15 @@ export default function CustomerAccountDetailFeature() {
               </div>
             )}
           </div>
+          {loyaltyCard &&<button
+            onClick={closeLoyaltyCard}
+            className="mt-4 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+          >
+            Close your Loyalty Card For this Merchant
+          </button>
+  }
         </div>
+        
         <AccountTokens address={address} />
         <AccountTransactions address={address} />
       </div>
