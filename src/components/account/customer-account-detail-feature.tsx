@@ -21,6 +21,8 @@ import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import { deriveLoyaltyPDA } from "../LoyaltyPay/accountUtils/getPDAs";
 import { fetchNftWithMintAddressAsync } from "../metaplex/utils";
 import axios from 'axios';
+import Image from "next/image";
+import { IconSeparatorHorizontal } from "@tabler/icons-react";
 
 export default function CustomerAccountDetailFeature() {
   const [merchantPubKey, setMerchantPubKey] = useState<string>("");
@@ -167,12 +169,22 @@ export default function CustomerAccountDetailFeature() {
               className="border border-gray-300 rounded-md p-2 w-full max-w-xl"
             />
           </div>
-          <button
-            onClick={fetchLoyaltyCard}
-            className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-          >
-            Fetch Loyalty Card
-          </button>
+          <div className="flex flex-col items-center mt-4">
+            <button
+              onClick={fetchLoyaltyCard}
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+            >
+              Fetch Loyalty Card
+            </button>
+            {loyaltyCard &&
+              <button
+                onClick={closeLoyaltyCard}
+                className="mt-4 ml-4 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                Close your Loyalty Card For this Merchant
+              </button>
+            }
+          </div>
           <div className="">
             {loyaltyCard && (
               <div className="mt-8">
@@ -211,21 +223,16 @@ export default function CustomerAccountDetailFeature() {
                   Current Reward Level:{" "}
                   <strong>{nft.attributes[0].value}</strong>
                 </p>
-                <img
+                <Image
                   src={nft.image}
+                  width={500}
+                  height={500}
                   alt="NFT"
                   className="w-48 h-auto mt-4 rounded-md shadow-md"
                 />
               </div>
             )}
           </div>
-          {loyaltyCard &&<button
-            onClick={closeLoyaltyCard}
-            className="mt-4 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            Close your Loyalty Card For this Merchant
-          </button>
-  }
         </div>
         
         <AccountTokens address={address} />
