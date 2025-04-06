@@ -130,7 +130,7 @@ pub struct CloseLoyaltyCard<'info> {
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
     #[account(mut, signer)]
-    pub customer: AccountInfo<'info>,
+    pub customer: SystemAccount<'info>,
 
     #[account(mut)]
     pub merchant: SystemAccount<'info>,

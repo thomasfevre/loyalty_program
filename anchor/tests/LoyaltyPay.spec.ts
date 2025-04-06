@@ -60,5 +60,28 @@ describe("loyalty-program", () => {
     console.log("Final customer balance:", (await provider.connection.getBalance(customer.publicKey)).toString());
   });
 
-
+  it("Closes loyalty card", async () => {
+    // Make sure the loyalty PDA is already initialized
+    const [loyaltyPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("loyalty"),
+        customer.publicKey.toBuffer(),
+        merchant.publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+  
+    const tx = await program.methods
+      .closeLoyaltyCard()
+      .accounts({
+        loyaltyCard: loyaltyPda,
+        customer: customer.publicKey,
+        merchant: merchant.publicKey,
+      })
+      .signers([customer]) // make sure the customer is signing, as they are signer in context
+      .rpc();
+  
+    console.log("Closed loyalty card with tx:", tx);
+  });
+  
 });

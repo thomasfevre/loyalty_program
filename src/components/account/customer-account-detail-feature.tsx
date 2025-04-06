@@ -126,8 +126,12 @@ export default function CustomerAccountDetailFeature() {
       return;
     }
     try {
-      
-      await program.methods.closeLoyaltyCard().accounts({address, merchantPubKey}).rpc();
+      const loyaltyPDA = deriveLoyaltyPDA(
+        address,
+        new PublicKey(merchantPubKey),
+        cluster.network as Cluster
+      );
+      await program.methods.closeLoyaltyCard().accounts({loyaltyPDA, address, merchantPubKey}).rpc();
       toast.success("Loyalty card closed successfully!");
 
     } catch (error) {
