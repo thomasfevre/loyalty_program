@@ -43,6 +43,7 @@ export default function MerchantAccountDetailFeature() {
 
   const address = useMemo(() => {
     console.log("wallet address", wallet?.publicKey?.toString());
+    console.log("program id ", program.programId.toString())
     if (!params.address) {
       return;
     }

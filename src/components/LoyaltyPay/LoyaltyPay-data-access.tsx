@@ -56,7 +56,7 @@ export function useLoyaltyPayProgram() {
       transactionToast(signature);
       return accounts.refetch();
     },
-    onError: () => toast.error("Failed to initialize account"),
+    onError: () => toast.error("Failed to process payment"),
   });
 
   const closeLoyaltyCard = useMutation({
