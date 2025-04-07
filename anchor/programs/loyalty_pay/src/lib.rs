@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{transfer, Token, TokenAccount, Transfer};
 use crate::constants::USDC_MINT;
+use anchor_lang::prelude::*;
 use anchor_lang::solana_program::pubkey;
+use anchor_spl::token::{transfer, Token, TokenAccount, Transfer};
 
 declare_id!("DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc");
 
@@ -68,11 +68,15 @@ pub mod loyalty_program {
         Ok(())
     }
 
+    /**
+    The account will be closed automatically by Anchor.
+    No additional logic is needed here.
+    docs: https://docs.rs/anchor-lang/latest/anchor_lang/trait.AccountsClose.html
+    */
     pub fn close_loyalty_card(_ctx: Context<CloseLoyaltyCard>) -> Result<()> {
         msg!("Loyalty card closed and rent refunded to merchant.");
         Ok(())
     }
-
 }
 
 #[derive(Accounts)]

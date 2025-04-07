@@ -11,7 +11,7 @@
 
 # next.js
 /.next/
-.next/
+.next
 /frontend/loyalty-dapp/.next/
 /frontend/loyalty-dapp/node_modules
 /frontend/loyalty-dapp/out/
