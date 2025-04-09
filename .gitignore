@@ -50,3 +50,6 @@ tmp
 /rust/test-ledger
 /rust/test-ledger-archive
 /target
+
+# windsurf rules
+.windsurfrules

@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::pubkey;
 use anchor_spl::token::{transfer, Token, TokenAccount, Transfer};
 
-declare_id!("DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc");
+declare_id!("7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47");
 
 #[program]
 pub mod loyalty_program {
@@ -98,23 +98,17 @@ pub struct ProcessPayment<'info> {
 
     #[account(
         mut,
-        associated_token::mint = usdc_mint,
+        associated_token::mint = &USDC_MINT,
         associated_token::authority = merchant,
     )]
     pub merchant_usdc_ata: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        associated_token::mint = usdc_mint,
+        associated_token::mint = &USDC_MINT,
         associated_token::authority = customer,
     )]
     pub customer_usdc_ata: Account<'info, TokenAccount>,
-
-    /// CHECK: verified by constraint
-    #[account(
-        address = USDC_MINT
-    )]
-    pub usdc_mint: AccountInfo<'info>,
 
     pub token_program: Program<'info, Token>,
 

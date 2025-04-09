@@ -11,7 +11,7 @@ import { AccountButtons } from "./account-ui";
 import {
   useAnchorWallet,
   useConnection,
-  useWallet
+  useWallet,
 } from "@solana/wallet-adapter-react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { useParams } from "next/navigation";
@@ -28,10 +28,11 @@ import {
   mintCustomerNft,
 } from "../metaplex/utils";
 import { BN } from "bn.js";
+import { USDC_MINT_ADDRESS } from "@project/anchor";
 
 export default function MerchantAccountDetailFeature() {
   const wallet = useAnchorWallet();
-  const { connected  } = useWallet();
+  const { connected } = useWallet();
   const { connection } = useConnection();
   const [amount, setAmount] = useState(1); // 1 USDC
   const [qrCode, setQRCode] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export default function MerchantAccountDetailFeature() {
 
   const address = useMemo(() => {
     console.log("wallet address", wallet?.publicKey?.toString());
-    console.log("program id ", program.programId.toString())
+    console.log("program id ", program.programId.toString());
     if (!params.address) {
       return;
     }
@@ -141,24 +142,19 @@ export default function MerchantAccountDetailFeature() {
           blockhash: latestBlockhash.blockhash,
           lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
         };
-        const confirmedTx = await connection?.confirmTransaction( confirmationStrategy, "confirmed");
+        const confirmedTx = await connection?.confirmTransaction(
+          confirmationStrategy,
+          "confirmed"
+        );
         if (!confirmedTx) {
           throw new Error("Transaction not confirmed");
         }
         console.log("Confirmed TX: ", confirmedTx);
         console.log("Minted NFT:", mintPublicKey);
 
-        // const customerAta = await getAssociatedTokenAddress(payerPubKey, USDC_MINT_ADDRESS);
-        // const merchantAta = await getAssociatedTokenAddress(wallet.publicKey, USDC_MINT_ADDRESS);
-        // console.log("Customer ATA: ", customerAta.toString());
-        // console.log("Merchant ATA: ", merchantAta.toString());
-
         // Update the loyalty program
         const pgrmTx = await program.methods
-          .processPayment(
-            new BN(amount),
-            new PublicKey(mintPublicKey)
-          )
+          .processPayment(new BN(amount), new PublicKey(mintPublicKey))
           .accounts({
             customer: payerPubKey,
             merchant: wallet.publicKey,

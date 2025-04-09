@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/loyalty_program.json`.
  */
 export type LoyaltyProgram = {
-  "address": "DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc",
+  "address": "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47",
   "metadata": {
     "name": "loyaltyProgram",
     "version": "0.1.0",
@@ -15,6 +15,9 @@ export type LoyaltyProgram = {
   "instructions": [
     {
       "name": "closeLoyaltyCard",
+      "docs": [
+        "The account will be closed automatically by Anchor.\n    No additional logic is needed here.\n    docs: https://docs.rs/anchor-lang/latest/anchor_lang/trait.AccountsClose.html"
+      ],
       "discriminator": [
         196,
         13,
@@ -169,8 +172,41 @@ export type LoyaltyProgram = {
                 ]
               },
               {
-                "kind": "account",
-                "path": "usdcMint"
+                "kind": "const",
+                "value": [
+                  233,
+                  40,
+                  57,
+                  85,
+                  9,
+                  101,
+                  255,
+                  212,
+                  214,
+                  74,
+                  202,
+                  175,
+                  70,
+                  212,
+                  93,
+                  247,
+                  49,
+                  142,
+                  91,
+                  79,
+                  87,
+                  201,
+                  12,
+                  72,
+                  125,
+                  96,
+                  98,
+                  93,
+                  130,
+                  155,
+                  131,
+                  123
+                ]
               }
             ],
             "program": {
@@ -259,8 +295,41 @@ export type LoyaltyProgram = {
                 ]
               },
               {
-                "kind": "account",
-                "path": "usdcMint"
+                "kind": "const",
+                "value": [
+                  233,
+                  40,
+                  57,
+                  85,
+                  9,
+                  101,
+                  255,
+                  212,
+                  214,
+                  74,
+                  202,
+                  175,
+                  70,
+                  212,
+                  93,
+                  247,
+                  49,
+                  142,
+                  91,
+                  79,
+                  87,
+                  201,
+                  12,
+                  72,
+                  125,
+                  96,
+                  98,
+                  93,
+                  130,
+                  155,
+                  131,
+                  123
+                ]
               }
             ],
             "program": {
@@ -301,10 +370,6 @@ export type LoyaltyProgram = {
               ]
             }
           }
-        },
-        {
-          "name": "usdcMint",
-          "address": "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
         },
         {
           "name": "tokenProgram",
