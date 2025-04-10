@@ -1,14 +1,25 @@
 "use client";
 
-import { getLoyaltyPayProgramId } from "@project/anchor";
-import { encodeURL, findReference, validateTransfer } from "@solana/pay";
+import { getLoyaltyPayProgramId, USDC_MINT_ADDRESS } from "@project/anchor";
+import {
+  encodeURL,
+  findReference,
+  validateTransfer,
+  ValidateTransferError,
+} from "@solana/pay";
 import {
   Cluster,
+  ConfirmedSignatureInfo,
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
+  Transaction,
 } from "@solana/web3.js";
 import { BigNumber } from "bignumber.js";
+import {
+  decodeInstruction,
+  getAssociatedTokenAddress,
+} from "@solana/spl-token";
 
 export const deriveLoyaltyPDA = (
   customer: PublicKey,
@@ -33,17 +44,27 @@ export const waitForPayment = async (
     try {
       console.log("Checking for payment...");
       const signatureInfo = await findReference(connection, reference, {
-        finality: "confirmed",
+        finality: "finalized",
       });
       console.log("Payment detected:", signatureInfo);
       console.log({ amount });
+
+      // Get the right reference array from the transaction
+      const referenceArray = await handlePaymentReferences(
+        connection,
+        signatureInfo,
+        reference
+      );
+      console.log("Reference array:", referenceArray);
+
       const validateTransferTX = await validateTransfer(
         connection,
         signatureInfo.signature,
         {
           recipient: merchantPubKey,
-          amount: new BigNumber(amount / LAMPORTS_PER_SOL),
-          reference: [reference],
+          amount: new BigNumber(amount),
+          reference: referenceArray,
+          splToken: USDC_MINT_ADDRESS,
         }
       );
       console.log("Validating transfer...", validateTransferTX);
@@ -55,10 +76,50 @@ export const waitForPayment = async (
       return payer;
     } catch (error) {
       // Wait for 1 second before checking again.
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (!`${error}`.includes("FindReferenceError: not found"))
+        console.log(error);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
   throw new Error("Payment not detected within the timeout period.");
+};
+
+const handlePaymentReferences = async (
+  connection: Connection,
+  signatureInfo: ConfirmedSignatureInfo,
+  reference: PublicKey
+) => {
+  const response = await connection.getTransaction(signatureInfo.signature, {
+    commitment: "finalized",
+  });
+  if (!response?.transaction) {
+    throw new Error("Transaction response is undefined.");
+  }
+  const { message: testmessage, signatures } = response.transaction;
+  const transaction = Transaction.populate(testmessage, signatures);
+  const instructions = transaction.instructions.slice();
+  const instruction = instructions.pop();
+  const decodedInstruction = decodeInstruction(instruction!);
+  const extraKeys = decodedInstruction.keys;
+  console.log("Decoded instruction:", decodedInstruction);
+  console.log("Extra keys:", extraKeys);
+  // log the extraKeys.multiSsigners
+  if ("multiSigners" in extraKeys) {
+    extraKeys.multiSigners.forEach((key) => {
+      console.log(
+        "Key:",
+        key.pubkey.toString(),
+        "isSigner:",
+        key.isSigner,
+        "isWritable:",
+        key.isWritable
+      );
+    });
+    return extraKeys.multiSigners.map((key) => key.pubkey);
+  } else {
+    console.log("No multiSigners found in extraKeys.");
+    return [reference];
+  }
 };
 
 export const generateSolanaPayURL = (
@@ -66,11 +127,16 @@ export const generateSolanaPayURL = (
   amount: number,
   reference: PublicKey
 ) => {
+  const usdcMint = new PublicKey(
+    "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
+  );
+
   return encodeURL({
     recipient: merchant,
-    amount: new BigNumber(amount / LAMPORTS_PER_SOL), // Convert to SOL
-    reference: [reference], // Used to track payment
-    label: "Solana Merchant",
-    message: "Loyalty Payment",
+    amount: new BigNumber(amount),
+    splToken: usdcMint,
+    reference,
+    label: "My Shop",
+    message: "Thanks for your purchase!",
   });
 };

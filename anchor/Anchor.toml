@@ -1,12 +1,12 @@
 [toolchain]
-anchor_version = "0.30.1"
+anchor_version = "0.31.0"
 
 [features]
 resolution = true
-skip-lint = false
+skip-lint = true
 
 [programs.localnet]
-LoyaltyPay = "6WQoS7AUSzB9dBC1QKCbKRySxZuj6oVYUdTNHtkXYVio"
+LoyaltyProgram = "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47"
 
 [registry]
 url = "https://api.apr.dev"

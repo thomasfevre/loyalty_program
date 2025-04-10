@@ -1,8 +1,9 @@
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
-import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
+import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
+import { PublicKey } from "@solana/web3.js";
 
 export const NETWORK = process.env.NEXT_PUBLIC_RPC_URL; 
-export const umi = createUmi(NETWORK!, { commitment: 'confirmed' }); 
+export const umi = createUmi(NETWORK!, { commitment: "confirmed" }); 
 umi.use(mplTokenMetadata());
 
 export let metadataUris: string[] = [
@@ -15,10 +16,10 @@ export let metadataUris: string[] = [
 
 export const nftDetails = [
     {
-        name: `Loyalty Card NFT`,
-        symbol: 'BAGUETTE',
-        image: 'https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/common_2.jpg',
-        description: 'Keep buyging to unlock more rewards!',
+        name: "Loyalty Card NFT",
+        symbol: "BAGUETTE",
+        image: "https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/common_2.jpg",
+        description: "Keep buyging to unlock more rewards!",
         attributes : [
             {
             "trait_type": "Reward Tier",
@@ -36,10 +37,10 @@ export const nftDetails = [
         }
     },
     {
-        name: `Loyalty Card NFT`,
-        symbol: 'BAGUETTE',
-        image: 'https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/rare_4.jpg',
-        description: 'Keep buyging to unlock more rewards!',
+        name: "Loyalty Card NFT",
+        symbol: "BAGUETTE",
+        image: "https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/rare_4.jpg",
+        description: "Keep buyging to unlock more rewards!",
         attributes : [
             {
             "trait_type": "Reward Tier",
@@ -57,10 +58,10 @@ export const nftDetails = [
         }
     },
     {
-        name: `Loyalty Card NFT`,
-        symbol: 'BAGUETTE',
-        image: 'https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/epic_1.jpg',
-        description: 'You are so close to get a 15% discount on your Next purchase !',
+        name: "Loyalty Card NFT",
+        symbol: "BAGUETTE",
+        image: "https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/epic_1.jpg",
+        description: "You are so close to get a 15% discount on your Next purchase !",
         attributes : [
             {
             "trait_type": "Reward Tier",
@@ -78,10 +79,10 @@ export const nftDetails = [
         }
     },
     {
-        name: `Loyalty Card NFT - Unlocked Discount`,
-        symbol: 'BAGUETTE',
-        image: 'https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/legendary_2.jpg',
-        description: 'You have unlocked a 15% discount on your Next purchase !',
+        name: "Loyalty Card NFT - Unlocked Discount",
+        symbol: "BAGUETTE",
+        image: "https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/legendary_2.jpg",
+        description: "You have unlocked a 15% discount on your Next purchase !",
         attributes : [
             {
             "trait_type": "Reward Tier",
@@ -118,7 +119,7 @@ async function uploadMetadata(index: number): Promise<string> {
             }
         };
         const metadataUri = await umi.uploader.uploadJson(metadata);
-        console.log('Uploaded metadata:', metadataUri);
+        console.log("Uploaded metadata:", metadataUri);
         return metadataUri;
     } catch (e) {
         throw e;

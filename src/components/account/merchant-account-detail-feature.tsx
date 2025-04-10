@@ -11,7 +11,7 @@ import { AccountButtons } from "./account-ui";
 import {
   useAnchorWallet,
   useConnection,
-  useWallet
+  useWallet,
 } from "@solana/wallet-adapter-react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { useParams } from "next/navigation";
@@ -28,12 +28,13 @@ import {
   mintCustomerNft,
 } from "../metaplex/utils";
 import { BN } from "bn.js";
+import { USDC_MINT_ADDRESS } from "@project/anchor";
 
 export default function MerchantAccountDetailFeature() {
   const wallet = useAnchorWallet();
-  const { connected  } = useWallet();
+  const { connected } = useWallet();
   const { connection } = useConnection();
-  const [amount, setAmount] = useState(0.001); // 0.001 SOL in lamports
+  const [amount, setAmount] = useState(1); // 1 USDC
   const [qrCode, setQRCode] = useState<string | null>(null);
   const { program } = useLoyaltyPayProgram();
   const { cluster } = useCluster();
@@ -43,6 +44,7 @@ export default function MerchantAccountDetailFeature() {
 
   const address = useMemo(() => {
     console.log("wallet address", wallet?.publicKey?.toString());
+    console.log("program id ", program.programId.toString());
     if (!params.address) {
       return;
     }
@@ -70,7 +72,7 @@ export default function MerchantAccountDetailFeature() {
 
     const url = generateSolanaPayURL(
       wallet.publicKey,
-      amount * LAMPORTS_PER_SOL,
+      amount,
       referenceKey
     ).toString();
     setQRCode(url);
@@ -129,21 +131,30 @@ export default function MerchantAccountDetailFeature() {
           throw new Error("Wallet does not support signTransaction");
         }
         const txSigned = await wallet.signTransaction(tx);
-        console.log("txHash: ", txSigned);
+        console.log("tx Object: ", txSigned);
         const txHash = await connection?.sendRawTransaction(
           txSigned.serialize()
         );
         console.log("txHash: ", txHash);
-        const confirmedTx = await connection?.confirmTransaction(txHash!);
+        const latestBlockhash = await connection.getLatestBlockhash();
+        const confirmationStrategy = {
+          signature: txHash,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        };
+        const confirmedTx = await connection?.confirmTransaction(
+          confirmationStrategy,
+          "confirmed"
+        );
+        if (!confirmedTx) {
+          throw new Error("Transaction not confirmed");
+        }
         console.log("Confirmed TX: ", confirmedTx);
         console.log("Minted NFT:", mintPublicKey);
 
         // Update the loyalty program
         const pgrmTx = await program.methods
-          .processPayment(
-            new BN(amount * LAMPORTS_PER_SOL),
-            new PublicKey(mintPublicKey)
-          )
+          .processPayment(new BN(amount), new PublicKey(mintPublicKey))
           .accounts({
             customer: payerPubKey,
             merchant: wallet.publicKey,
@@ -178,7 +189,7 @@ export default function MerchantAccountDetailFeature() {
             reference,
             connection,
             wallet.publicKey,
-            amount * LAMPORTS_PER_SOL
+            amount
           );
           toast.success("Payment received! Updating loyalty points...");
           setStatus("Payment received! Updating blockchain...");
@@ -213,14 +224,14 @@ export default function MerchantAccountDetailFeature() {
           <AccountButtons address={address} />
         </div>
       </AppHero>
-      <div className="space-y-8">
+      <div className="flex justify-center">
         <div className="">
           {wallet?.publicKey ? (
             <>
               <div className="my-4">
                 <p className="text-lg mb-2">{status}</p>
                 <label className="block text-sm font-medium  mb-1">
-                  Amount (SOL):
+                  Amount (USDC):
                 </label>
                 <input
                   type="number"

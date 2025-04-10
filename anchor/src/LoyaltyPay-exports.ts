@@ -20,7 +20,7 @@ export function getLoyaltyPayProgramId(cluster: Cluster) {
   switch (cluster) {
     case 'devnet':
       // This is the program ID for the LoyaltyPay program on devnet and testnet.
-      return new PublicKey('CXccEo3Qk7j67C3KHUD1zmLsyFk4UEXJzFefPKaV7577')
+      return new PublicKey('7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47')
     case 'testnet':
       // This is the program ID for the LoyaltyPay program on devnet and testnet.
       return new PublicKey('6WQoS7AUSzB9dBC1QKCbKRySxZuj6oVYUdTNHtkXYVio')
@@ -29,3 +29,6 @@ export function getLoyaltyPayProgramId(cluster: Cluster) {
       return LOYALTY_PAY_PROGRAM_ID
   }
 }
+
+export const USDC_MINT_ADDRESS = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'); // USDC mint address on Solana devnet
+

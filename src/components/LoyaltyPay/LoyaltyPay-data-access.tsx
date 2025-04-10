@@ -56,7 +56,27 @@ export function useLoyaltyPayProgram() {
       transactionToast(signature);
       return accounts.refetch();
     },
-    onError: () => toast.error("Failed to initialize account"),
+    onError: () => toast.error("Failed to process payment"),
+  });
+
+  const closeLoyaltyCard = useMutation({
+    mutationKey: ["LoyaltyPay", "close_loyalty_card", { cluster }],
+    mutationFn: async ({
+      customer,
+      merchant,
+    }: {
+      customer: PublicKey;
+      merchant: PublicKey;
+    }) =>
+      program.methods
+        .closeLoyaltyCard()
+        .accounts({ customer, merchant })
+        .rpc(),
+    onSuccess: (signature) => {
+      transactionToast(signature);
+      return accounts.refetch();
+    },
+    onError: () => toast.error("Failed to close account"),
   });
 
   return {
