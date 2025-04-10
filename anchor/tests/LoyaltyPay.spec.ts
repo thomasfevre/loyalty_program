@@ -1,7 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { LoyaltyProgram } from "../target/types/loyalty_program";
-import { setupUSDC } from "./setup-usdc";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 describe("loyalty-program", () => {
