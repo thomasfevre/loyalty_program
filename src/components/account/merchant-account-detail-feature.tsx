@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { PublicKey as MetaplexPublicKey } from "@metaplex-foundation/umi";
+import { PublicKey as MetaplexPublicKey, Transaction, publicKey as umiPublicKey } from "@metaplex-foundation/umi";
 import { useCluster } from "../cluster/cluster-data-access";
-import { Cluster, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Cluster, LAMPORTS_PER_SOL, VersionedTransaction } from "@solana/web3.js";
 import { ExplorerLink } from "../cluster/cluster-ui";
 import { AppHero, ellipsify } from "../ui/ui-layout";
 import { AccountButtons } from "./account-ui";
@@ -25,10 +25,13 @@ import {
 import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import {
   doesCustomerOwnMerchantAsset,
+  fetchCustomerAssets,
   mintCustomerNft,
+  updateNft,
 } from "../metaplex/utils";
 import { BN } from "bn.js";
 import { USDC_MINT_ADDRESS } from "@project/anchor";
+import { useAnchorProvider } from "../solana/solana-provider";
 
 export default function MerchantAccountDetailFeature() {
   const wallet = useAnchorWallet();
@@ -163,16 +166,69 @@ export default function MerchantAccountDetailFeature() {
         toast.success(`Loyalty updated! TX: ${pgrmTx}`);
         setStatus("Loyalty updated successfully!");
       } else {
-        // If yes, upgrade the NFT
+        // else upgrade the nft uri a new reward tier is reached
+        const loyaltyCardPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey, cluster.network as Cluster);
+        const oldLoyaltyPoints = loyaltyCardAccount?.loyaltyPoints || 0;
+        
+        // Call the processPaiement method to add the points to the loyalty card
+        // Update the loyalty program
+       
+        const pgrmTx = await program.methods
+          .processPayment(
+            new BN(amount),
+            loyaltyCardAccount?.mintAddress
+              ? new PublicKey(loyaltyCardAccount.mintAddress)
+              : (() => {
+                  throw new Error("Mint address is undefined");
+                })()
+          )
+          .accounts({
+            customer: payerPubKey,
+            merchant: wallet.publicKey,
+          })
+          .rpc();
+        toast.success(`Loyalty updated! TX: ${pgrmTx}`);
+        setStatus("Loyalty updated successfully!");
+        
+        // Fetch the loyalty card again to get the updated data
+        const newLoyaltyPoints = (await program.account.loyaltyCard.fetch(loyaltyCardPDA)).loyaltyPoints;
 
-        // const update = await updateNft(1, wallet);
-        console.log("Customer has NFT:", customerHasNft);
+        // Then update if a new level is reached
+        let newLevel = 0;
+        if (oldLoyaltyPoints <= new BN(33) && newLoyaltyPoints > new BN(33)) {
+          console.log("Customer reached the second level!");
+          newLevel = 2;
+        } else if (
+          oldLoyaltyPoints <= new BN(66) &&
+          newLoyaltyPoints > new BN(66)
+        ) {
+          console.log("Customer reached the third level!");
+          newLevel = 3;
+        } else if (
+          oldLoyaltyPoints <= new BN(100) &&
+          newLoyaltyPoints > new BN(100)
+        ) {  
+          console.log("Customer reached the fourth level!");
+          newLevel = 4;
+        }
+
+        if (newLevel > 0) {
+          const update = await updateNft(
+            newLevel,
+            loyaltyCardAccount?.mintAddress,
+            {
+              publicKey: umiPublicKey(wallet.publicKey),
+              signTransaction: wallet.signTransaction as <T extends Transaction | VersionedTransaction>(transaction: T) => Promise<T>,
+              signAllTransactions: wallet.signAllTransactions as <T extends Transaction | VersionedTransaction>(transactions: T[]) => Promise<T[]>,
+              signMessage: async (message: Uint8Array) => {
+                throw new Error("signMessage is not implemented");
+              },
+            }
+          );
+        }
       }
 
-      // else upgrade the nft uri a new reward tier is reached
-      // Get the loyalty card PDA
-      // const loyaltyCardPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey);
-      // const loyaltyCard = await program.account.loyaltyCard.fetch(loyaltyCardPDA);
+      
     } catch (err) {
       console.error(err);
       toast.error("Failed to update loyalty program");

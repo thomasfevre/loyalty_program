@@ -6,6 +6,7 @@ import {
   mintV1,
   createV1,
   TokenStandard,
+  updateV1,
 } from "@metaplex-foundation/mpl-token-metadata";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -25,8 +26,9 @@ import {
   toWeb3JsLegacyTransaction,
   toWeb3JsKeypair,
 } from "@metaplex-foundation/umi-web3js-adapters";
-import { metadataUris, oneTimeSetup, umi } from "./constants";
+import { metadataUris, nftDetails, oneTimeSetup, umi } from "./constants";
 import { PublicKey, Transaction } from "@solana/web3.js";
+import toast from "react-hot-toast";
 
 // Pure async function for non-React contexts
 export async function fetchNftWithMintAddressAsync(
@@ -170,5 +172,34 @@ export async function mintCustomerNft(
     return { tx, mintPublicKey: mint.publicKey.toString() };
   } catch (e) {
     throw e;
+  }
+}
+
+export async function updateNft(newMetadataUriIndex: number, mintAddress: PublicKey, merchantWallet: Signer) {
+  try {
+      const update = generateSigner(umi);
+
+      (async () => {
+          const metadata = await fetchMetadataFromSeeds(umi, { mint: umiPublicKey(mintAddress.toString()) });
+          const tx = await updateV1(umi, {
+              mint: umiPublicKey(mintAddress.toString()),
+              authority: merchantWallet,
+              data: {
+                  ...metadata,
+                  name: nftDetails[newMetadataUriIndex].name,
+                  symbol: nftDetails[newMetadataUriIndex].symbol,
+                  uri: metadataUris[newMetadataUriIndex],
+                  sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
+                  creators: metadata.creators
+              }
+          }).sendAndConfirm(umi);
+          console.log(`Updated NFT metadata for mint: ${mintAddress.toString()}`);
+          console.log(tx.toString());
+      })();
+      
+      console.log(`Updated NFT: ${update.publicKey.toString()}`)
+      toast.success('NFT Updated successfully!');
+  } catch (e) {
+      throw e;
   }
 }
