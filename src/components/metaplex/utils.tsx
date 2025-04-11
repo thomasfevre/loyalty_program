@@ -27,7 +27,7 @@ import {
   toWeb3JsKeypair,
 } from "@metaplex-foundation/umi-web3js-adapters";
 import { metadataUris, nftDetails, oneTimeSetup, umi } from "./constants";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import toast from "react-hot-toast";
 
 // Pure async function for non-React contexts
@@ -171,8 +171,9 @@ export async function mintCustomerNft(
   }
 }
 
-export async function updateNft(newMetadataUriIndex: number, mintAddress: PublicKey, merchantWallet: AnchorWallet) {
+export async function updateNft(newMetadataUriIndex: number, mintAddress: PublicKey, merchantWallet: AnchorWallet, connection: Connection) {
   try {
+    umi.use(signerIdentity(merchantWallet as unknown as Signer));
     const metadata = await fetchMetadataFromSeeds(umi, { mint: umiPublicKey(mintAddress.toString()) });
     const umiUpdatetx = await updateV1(umi, {
         mint: umiPublicKey(mintAddress.toString()),
@@ -193,7 +194,25 @@ export async function updateNft(newMetadataUriIndex: number, mintAddress: Public
     // Sign the transaction with the merchant wallet and mint keypair
     const wallet = merchantWallet;
     tx.feePayer = new PublicKey(wallet.publicKey);
+    tx.recentBlockhash = (await umi.rpc.getLatestBlockhash()).blockhash;
     const txSigned = await wallet.signTransaction(tx);
+    const txHash = await connection?.sendRawTransaction(
+      txSigned.serialize()
+    );
+    console.log("txHash: ", txHash);
+    const latestBlockhash = await connection.getLatestBlockhash();
+    const confirmationStrategy = {
+      signature: txHash,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    };
+    const confirmedTx = await connection?.confirmTransaction(
+      confirmationStrategy,
+      "confirmed"
+    );
+    if (!confirmedTx) {
+      throw new Error("Transaction not confirmed");
+    }
     console.log(`Updated NFT metadata for mint: ${mintAddress.toString()}`);
     console.log(tx.toString());
     toast.success('NFT Updated successfully!');

@@ -195,29 +195,32 @@ export default function MerchantAccountDetailFeature() {
         const newLoyaltyPoints = (await program.account.loyaltyCard.fetch(loyaltyCardPDA)).loyaltyPoints;
 
         // Then update if a new level is reached
-        let newLevel = 0;
+        let newLevel = -1;
         if (oldLoyaltyPoints <= new BN(33) && newLoyaltyPoints > new BN(33)) {
           console.log("Customer reached the second level!");
-          newLevel = 2;
+          newLevel = 1;
         } else if (
           oldLoyaltyPoints <= new BN(66) &&
           newLoyaltyPoints > new BN(66)
         ) {
           console.log("Customer reached the third level!");
-          newLevel = 3;
+          newLevel = 2;
         } else if (
           oldLoyaltyPoints <= new BN(100) &&
           newLoyaltyPoints > new BN(100)
         ) {  
           console.log("Customer reached the fourth level!");
-          newLevel = 4;
+          newLevel = 3;
+        } else {
+          newLevel = 0;
         }
 
-        if (newLevel > 0) {
+        if (newLevel >= 0) {
           const update = await updateNft(
-            newLevel,
+            newLevel-1,
             loyaltyCardAccount?.mintAddress,
-            wallet
+            wallet,
+            connection
           );
         }
       }
