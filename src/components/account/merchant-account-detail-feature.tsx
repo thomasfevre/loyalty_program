@@ -217,14 +217,7 @@ export default function MerchantAccountDetailFeature() {
           const update = await updateNft(
             newLevel,
             loyaltyCardAccount?.mintAddress,
-            {
-              publicKey: umiPublicKey(wallet.publicKey),
-              signTransaction: wallet.signTransaction as <T extends Transaction | VersionedTransaction>(transaction: T) => Promise<T>,
-              signAllTransactions: wallet.signAllTransactions as <T extends Transaction | VersionedTransaction>(transactions: T[]) => Promise<T[]>,
-              signMessage: async (message: Uint8Array) => {
-                throw new Error("signMessage is not implemented");
-              },
-            }
+            wallet
           );
         }
       }

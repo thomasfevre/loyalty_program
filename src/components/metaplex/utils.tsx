@@ -9,7 +9,7 @@ import {
   updateV1,
 } from "@metaplex-foundation/mpl-token-metadata";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import { useConnection } from "@solana/wallet-adapter-react";
+import { AnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useCluster } from "../cluster/cluster-data-access";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -171,30 +171,32 @@ export async function mintCustomerNft(
   }
 }
 
-export async function updateNft(newMetadataUriIndex: number, mintAddress: PublicKey, merchantWallet: Signer) {
+export async function updateNft(newMetadataUriIndex: number, mintAddress: PublicKey, merchantWallet: AnchorWallet) {
   try {
-      const update = generateSigner(umi);
+    const metadata = await fetchMetadataFromSeeds(umi, { mint: umiPublicKey(mintAddress.toString()) });
+    const umiUpdatetx = await updateV1(umi, {
+        mint: umiPublicKey(mintAddress.toString()),
+        authority: merchantWallet as unknown as Signer,
+        data: {
+            ...metadata,
+            name: nftDetails[newMetadataUriIndex].name,
+            symbol: nftDetails[newMetadataUriIndex].symbol,
+            uri: metadataUris[newMetadataUriIndex],
+            sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
+            creators: metadata.creators
+        }
+    }).useV0().buildWithLatestBlockhash(umi);
 
-      (async () => {
-          const metadata = await fetchMetadataFromSeeds(umi, { mint: umiPublicKey(mintAddress.toString()) });
-          const tx = await updateV1(umi, {
-              mint: umiPublicKey(mintAddress.toString()),
-              authority: merchantWallet,
-              data: {
-                  ...metadata,
-                  name: nftDetails[newMetadataUriIndex].name,
-                  symbol: nftDetails[newMetadataUriIndex].symbol,
-                  uri: metadataUris[newMetadataUriIndex],
-                  sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
-                  creators: metadata.creators
-              }
-          }).sendAndConfirm(umi);
-          console.log(`Updated NFT metadata for mint: ${mintAddress.toString()}`);
-          console.log(tx.toString());
-      })();
-      
-      console.log(`Updated NFT: ${update.publicKey.toString()}`)
-      toast.success('NFT Updated successfully!');
+    const web3JsUpdateTx = toWeb3JsLegacyTransaction(umiUpdatetx);
+    // Combine the transactions
+    let tx = new Transaction().add(web3JsUpdateTx);
+    // Sign the transaction with the merchant wallet and mint keypair
+    const wallet = merchantWallet;
+    tx.feePayer = new PublicKey(wallet.publicKey);
+    const txSigned = await wallet.signTransaction(tx);
+    console.log(`Updated NFT metadata for mint: ${mintAddress.toString()}`);
+    console.log(tx.toString());
+    toast.success('NFT Updated successfully!');
   } catch (e) {
       throw e;
   }
