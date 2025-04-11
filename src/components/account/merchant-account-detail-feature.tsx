@@ -25,7 +25,6 @@ import {
 import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import {
   doesCustomerOwnMerchantAsset,
-  fetchCustomerAssets,
   mintCustomerNft,
   updateNft,
 } from "../metaplex/utils";
@@ -105,8 +104,8 @@ export default function MerchantAccountDetailFeature() {
       let loyaltyCardAccount;
       try {
         const customerPDA = deriveLoyaltyPDA(
-          wallet.publicKey,
           payerPubKey,
+          wallet.publicKey,
           cluster.network as Cluster
         );
         loyaltyCardAccount = await program.account.loyaltyCard.fetch(
@@ -119,8 +118,10 @@ export default function MerchantAccountDetailFeature() {
 
       // Check if the customer already own an NFT from the merchant
       const customerHasNft = await doesCustomerOwnMerchantAsset(
-        payerPubKey.toString() as MetaplexPublicKey,
-        wallet.publicKey.toString() as MetaplexPublicKey
+        loyaltyCardAccount?.mintAddress
+          ? umiPublicKey(loyaltyCardAccount.mintAddress)
+          : umiPublicKey(wallet.publicKey.toString()), // fake data if no mint address
+        umiPublicKey(wallet.publicKey.toString())
       );
       console.log("Customer has nft?: ", customerHasNft);
       // If not, mint a new NFT
@@ -167,7 +168,7 @@ export default function MerchantAccountDetailFeature() {
         setStatus("Loyalty updated successfully!");
       } else {
         // else upgrade the nft uri a new reward tier is reached
-        const loyaltyCardPDA = deriveLoyaltyPDA(wallet.publicKey, payerPubKey, cluster.network as Cluster);
+        const loyaltyCardPDA = deriveLoyaltyPDA(payerPubKey, wallet.publicKey, cluster.network as Cluster);
         const oldLoyaltyPoints = loyaltyCardAccount?.loyaltyPoints || 0;
         
         // Call the processPaiement method to add the points to the loyalty card

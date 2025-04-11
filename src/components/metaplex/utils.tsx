@@ -49,21 +49,17 @@ export async function fetchNftWithMintAddressAsync(
   }
 }
 
-// Pure async function for non-React contexts
-export async function fetchCustomerAssets(mintPubKey: MetaplexPublicKey) {
-  console.log("Fetching assets for ", mintPubKey.toString());
-  return await fetchDigitalAsset(umi, mintPubKey);
-}
 
 // Async function version for use outside of React components
 export async function doesCustomerOwnMerchantAsset(
-  customerPubKey: MetaplexPublicKey,
+  mintPubKey: MetaplexPublicKey,
   merchantPubKey: MetaplexPublicKey
 ): Promise<boolean> {
   try {
-    const data = await fetchCustomerAssets(customerPubKey);
+    const data = await fetchNftWithMintAddressAsync(mintPubKey);
+    console.log("data", data?.updateAuthority);
     if (!data) return false;
-    const authority = unwrapOption(data.mint.mintAuthority);
+    const authority = data.updateAuthority;
     if (!authority) return false;
     return authority.toString() === merchantPubKey.toString();
   } catch (error) {
