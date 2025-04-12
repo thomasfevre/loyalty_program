@@ -41,6 +41,8 @@ pub mod loyalty_program {
             // Calculate refund (15% of the current payment amount).
             let refund = (amount as u128 * loyalty_card.refund_percentage as u128 / 100) as u64;
             msg!("Threshold reached: refunding {} USDC", refund);
+            let decimals = 1_000_000u64; // USDC has 6 decimals
+            let refundAmount = refund.checked_mul(decimals).ok_or(ErrorCode::Overflow)?;
 
             // Perform USDC refund transfer
             let cpi_accounts = Transfer {
@@ -52,7 +54,7 @@ pub mod loyalty_program {
             let cpi_ctx =
                 CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
 
-            transfer(cpi_ctx, refund)?;
+            transfer(cpi_ctx, refundAmount)?;
 
             // Update loyalty points after refund --> set to 0
             loyalty_card.loyalty_points = loyalty_card

@@ -217,7 +217,7 @@ export default function MerchantAccountDetailFeature() {
 
         if (newLevel >= 0) {
           const update = await updateNft(
-            newLevel-1,
+            newLevel,
             loyaltyCardAccount?.mintAddress,
             wallet,
             connection
