@@ -372,6 +372,11 @@ export type LoyaltyProgram = {
           }
         },
         {
+          "name": "usdcAccount",
+          "writable": true,
+          "address": "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
