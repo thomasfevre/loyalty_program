@@ -118,12 +118,12 @@ export type LoyaltyProgram = {
         },
         {
           "name": "customer",
-          "writable": true
+          "writable": true,
+          "signer": true
         },
         {
           "name": "merchant",
-          "writable": true,
-          "signer": true
+          "writable": true
         },
         {
           "name": "merchantUsdcAta",
@@ -377,6 +377,34 @@ export type LoyaltyProgram = {
           "address": "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
         },
         {
+          "name": "nftAsset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -422,6 +450,11 @@ export type LoyaltyProgram = {
       "code": 6001,
       "name": "unauthorized",
       "msg": "Only the merchant who owns this card can close it."
+    },
+    {
+      "code": 6002,
+      "name": "failedToCreateCollection",
+      "msg": "Failed to create NFT collection."
     }
   ],
   "types": [

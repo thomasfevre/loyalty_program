@@ -8,15 +8,18 @@ skip-lint = true
 [programs.localnet]
 LoyaltyProgram = "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47"
 
+[[test.validator.clone]]
+address = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d" # Metaplex Core Program ID
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "DevNet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "../node_modules/.bin/jest --preset ts-jest"
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [test]
 startup_wait = 5000
@@ -27,3 +30,4 @@ upgradeable = false
 bind_address = "127.0.0.1"
 ledger = ".anchor/test-ledger"
 rpc_port = 8899
+url = "https://api.devnet.solana.com"

@@ -2,13 +2,33 @@ use crate::constants::USDC_MINT;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::pubkey;
 use anchor_spl::token::{transfer, Token, TokenAccount, Transfer};
+use mpl_core::{
+    accounts::{AssetSigner, BaseCollectionV1},
+    instructions::CreateV2CpiBuilder,
+    programs::MPL_CORE_ID,
+    types::UpdateAuthority,
+};
 use anchor_spl::token_interface::Mint;
 
 declare_id!("7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47");
 
 #[program]
 pub mod loyalty_program {
+
     use super::*;
+
+    // pub fn create_collection(ctx: Context<CreateCollection>) -> Result<()> {
+    //     CreateCollectionV2CpiBuilder::new(&ctx.accounts.system_program)
+    //         .payer(&ctx.accounts.payer)
+    //         .collection(&ctx.accounts.collection)
+    //         .system_program(&ctx.accounts.system_program)
+    //         .name("LoyaltyPay".to_string())
+    //         .uri("test bite".to_string())
+    //         .invoke()?;
+
+    //     msg!("NFT Collection created successfully");
+    //     Ok(())
+    // }
 
     pub fn process_payment(
         ctx: Context<ProcessPayment>,
@@ -20,7 +40,7 @@ pub mod loyalty_program {
         let merchant = &ctx.accounts.merchant;
 
         // If this is a new loyalty card, initialize it.
-        if loyalty_card.loyalty_points == 0 {
+        if loyalty_card.customer == Pubkey::default() {
             loyalty_card.merchant = merchant.key();
             loyalty_card.customer = customer.key();
             loyalty_card.threshold = 100; // Example threshold value (adjust as needed)
@@ -28,18 +48,27 @@ pub mod loyalty_program {
             loyalty_card.mint_address = mint_address;
         }
 
-        // Save the current points, then add the new payment amount.
-        let previous_points = loyalty_card.loyalty_points;
         loyalty_card.loyalty_points = loyalty_card
             .loyalty_points
             .checked_add(amount)
             .ok_or(ErrorCode::Overflow)?;
 
-        // Check if threshold is just reached or exceeded.
-        if previous_points < loyalty_card.threshold
-            && loyalty_card.loyalty_points >= loyalty_card.threshold
-        {
-            // Calculate refund (15% of the current payment amount).
+        CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+            .payer(&ctx.accounts.customer)
+            .owner(Some(&ctx.accounts.customer))
+            .name("loyalty pay".to_string())
+            .uri("test bite".to_string())
+            .asset(&ctx.accounts.nft_asset.to_account_info())
+            // TODO: Investigate authority. Collection owner can only update
+            .authority(Some(&ctx.accounts.customer.to_account_info()))
+            .system_program(&ctx.accounts.system_program.to_account_info())
+            .invoke_signed(&[&[
+                b"loyalty",
+                ctx.accounts.customer.key().as_ref(),
+                ctx.accounts.merchant.key().as_ref(),
+                &[ctx.bumps.loyalty_card],
+            ]])?;
+
             let refund = (amount as u128 * loyalty_card.refund_percentage as u128 / 100) as u64;
             msg!("Threshold reached: refunding {} USDC", refund);
             let decimals = 10 * ctx.accounts.usdc_account.decimals;
@@ -47,24 +76,24 @@ pub mod loyalty_program {
                 .checked_mul(decimals.into())
                 .ok_or(ErrorCode::Overflow)?;
 
-            // Perform USDC refund transfer
-            let cpi_accounts = Transfer {
-                from: ctx.accounts.merchant_usdc_ata.to_account_info(),
-                to: ctx.accounts.customer_usdc_ata.to_account_info(),
-                authority: ctx.accounts.merchant.to_account_info(),
-            };
+        // Perform USDC refund transfer
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.customer_usdc_ata.to_account_info(),
+            to: ctx.accounts.merchant_usdc_ata.to_account_info(),
+            authority: ctx.accounts.merchant.to_account_info(),
+        };
 
             let cpi_ctx =
                 CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
 
             transfer(cpi_ctx, refund_amount)?;
 
-            // Update loyalty points after refund --> set to 0
-            loyalty_card.loyalty_points = loyalty_card
-                .loyalty_points
-                .checked_sub(loyalty_card.threshold)
-                .ok_or(ErrorCode::Overflow)?;
-        }
+        // We need to move this logic to a dedicated fn
+        // // Update loyalty points after refund --> set to 0
+        // loyalty_card.loyalty_points = loyalty_card
+        //     .loyalty_points
+        //     .checked_sub(loyalty_card.threshold)
+        //     .ok_or(ErrorCode::Overflow)?;
 
         msg!(
             "Loyalty card updated. New loyalty points: {}",
@@ -95,10 +124,10 @@ pub struct ProcessPayment<'info> {
     )]
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
-    #[account(mut)]
+    #[account(mut, signer)]
     pub customer: SystemAccount<'info>,
 
-    #[account(mut, signer)]
+    #[account(mut)]
     pub merchant: AccountInfo<'info>,
 
     #[account(
@@ -121,10 +150,36 @@ pub struct ProcessPayment<'info> {
     )]
     pub usdc_account: InterfaceAccount<'info, Mint>,
 
-    pub token_program: Program<'info, Token>,
+    /// CHECK: This is the NFT asset account
+    #[account(
+        init_if_needed,
+        payer = merchant,
+        space = 8 + 1336,
+        seeds = [b"nft", customer.key().as_ref(),merchant.key().as_ref()],
+        bump,
+    )]
+    pub nft_asset: AccountInfo<'info>,
 
+    #[account(address = MPL_CORE_ID)]
+    pub mpl_core_program: Program<'info, Token>,
+
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
+
+// #[derive(Accounts)]
+// pub struct CreateCollection<'info> {
+//     #[account(mut)]
+//     pub payer: AccountInfo<'info>,
+
+//     pub system_program: Program<'info, System>,
+
+//     #[Account(
+//         mut,
+//         constraint = event.update_authority == manager.key(),
+//     )]
+//     pub collection: Account<'info, BaseCollectionV1>,
+// }
 
 #[derive(Accounts)]
 pub struct CloseLoyaltyCard<'info> {
@@ -169,6 +224,9 @@ pub enum ErrorCode {
 
     #[msg("Only the merchant who owns this card can close it.")]
     Unauthorized,
+
+    #[msg("Failed to create NFT collection.")]
+    FailedToCreateCollection,
 }
 
 pub mod constants {

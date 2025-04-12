@@ -1,112 +1,242 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { LoyaltyProgram } from "../target/types/loyalty_program";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  Transaction
+} from "@solana/web3.js";
+import {
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+  createMint,
+  createAssociatedTokenAccountInstruction,
+  mintTo,
+  getAccount,
+  Account,
+} from "@solana/spl-token";
+import { BN } from "bn.js";
 
-describe("loyalty-program", () => {
-  const provider = anchor.AnchorProvider.local();
+// Utiliser l'ID Metaplex Core cloné dans Anchor.toml
+const MPL_CORE_ID = new PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
+
+describe("loyalty_program", () => {
+  const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-
   const program = anchor.workspace.LoyaltyProgram as Program<LoyaltyProgram>;
+  const connection = provider.connection;
 
-  const customer = anchor.web3.Keypair.generate();
-  const merchant = anchor.web3.Keypair.generate();
-  console.log("customer:", customer.publicKey.toBase58());
-  console.log("merchant:", merchant.publicKey.toBase58());
+  const merchant = Keypair.generate();
+  const customer = Keypair.generate();
+  const mintAuthority = Keypair.generate();
 
-  // Variables to store USDC-related information
-  let usdcMint: anchor.web3.PublicKey;
-  let customerUsdcAta: anchor.web3.PublicKey;
-  let merchantUsdcAta: anchor.web3.PublicKey;
+  let usdcMint: PublicKey;
+  let merchantUsdcAta: PublicKey;
+  let customerUsdcAta: PublicKey;
+  let loyaltyCardPda: PublicKey;
+  let loyaltyCardBump: number;
+  let nftAssetPda: PublicKey;
+  let nftAssetBump: number;
 
-  it("Funds customer & merchant and sets up USDC", async () => {
-    // Airdrop SOL to customer and merchant
-    const tx1 = await provider.connection.requestAirdrop(customer.publicKey, anchor.web3.LAMPORTS_PER_SOL);
-    const tx2 = await provider.connection.requestAirdrop(merchant.publicKey, anchor.web3.LAMPORTS_PER_SOL);
-    await provider.connection.confirmTransaction(tx1);
-    await provider.connection.confirmTransaction(tx2);
-    
-    // Set up USDC token on localnet
-    const usdcSetup = await setupUSDC(provider, customer, merchant);
-    usdcMint = usdcSetup.usdcMint;
-    customerUsdcAta = usdcSetup.customerTokenAccount.address;
-    merchantUsdcAta = usdcSetup.merchantTokenAccount.address;
-    
-    console.log("USDC mint:", usdcMint.toBase58());
-    console.log("Customer USDC ATA:", customerUsdcAta.toBase58());
-    console.log("Merchant USDC ATA:", merchantUsdcAta.toBase58());
+  const airdrop = async (account: PublicKey, amount = 2 * LAMPORTS_PER_SOL) => {
+    const sig = await connection.requestAirdrop(account, amount);
+    const latestBlockhash = await connection.getLatestBlockhash();
+    await connection.confirmTransaction({
+      signature: sig,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    }, "confirmed");
+    console.log(`Airdropped ${amount / LAMPORTS_PER_SOL} SOL to ${account.toBase58()}`);
+  };
+
+  const getTokenBalance = async (tokenAccount: PublicKey): Promise<bigint> => {
+    try {
+      const accountInfo = await getAccount(connection, tokenAccount);
+      return accountInfo.amount;
+    } catch (e: any) {
+      if (e.name === 'TokenAccountNotFoundError' || e.message?.includes("could not find account")) {
+        return BigInt(0);
+      }
+      console.error(`Error fetching token balance for ${tokenAccount.toBase58()}:`, e);
+      throw e;
+    }
+  };
+
+  // Jest uses beforeAll instead of before
+  beforeAll(async () => {
+    await airdrop(merchant.publicKey);
+    await airdrop(customer.publicKey);
+    await airdrop(mintAuthority.publicKey);
+
+    console.log(`Merchant: ${merchant.publicKey.toBase58()}`);
+    console.log(`Customer: ${customer.publicKey.toBase58()}`);
+
+    // @ts-ignore
+    usdcMint = await createMint(connection, provider.wallet.payer, mintAuthority.publicKey, null, 6);
+    console.log(`Mock USDC Mint créé: ${usdcMint.toBase58()}`);
+
+    [loyaltyCardPda, loyaltyCardBump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("loyalty"), customer.publicKey.toBuffer(), merchant.publicKey.toBuffer()], program.programId);
+    console.log(`LoyaltyCard PDA: ${loyaltyCardPda.toBase58()}`);
+
+    [nftAssetPda, nftAssetBump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("nft"), customer.publicKey.toBuffer(), merchant.publicKey.toBuffer()], program.programId);
+    console.log(`NFT Asset PDA: ${nftAssetPda.toBase58()}`);
+
+    merchantUsdcAta = getAssociatedTokenAddressSync(usdcMint, merchant.publicKey);
+    customerUsdcAta = getAssociatedTokenAddressSync(usdcMint, customer.publicKey);
+    console.log(`Merchant USDC ATA: ${merchantUsdcAta.toBase58()}`);
+    console.log(`Customer USDC ATA: ${customerUsdcAta.toBase58()}`);
+
+    const tx = new Transaction().add(
+      createAssociatedTokenAccountInstruction(provider.wallet.publicKey, customerUsdcAta, customer.publicKey, usdcMint),
+      createAssociatedTokenAccountInstruction(provider.wallet.publicKey, merchantUsdcAta, merchant.publicKey, usdcMint)
+    );
+    await provider.sendAndConfirm(tx, [], { skipPreflight: false, commitment: "confirmed" });
+    console.log("ATAs créés");
+
+    const mintAmount = new BN(1000 * 10 ** 6);
+    // @ts-ignore
+    await mintTo(connection, provider.wallet.payer, usdcMint, customerUsdcAta, mintAuthority, BigInt(mintAmount.toString()));
+    console.log(`Minted ${mintAmount.div(new BN(10 ** 6)).toString()} mock USDC to Customer ATA`);
+
+    const initialCustomerBalance = await getTokenBalance(customerUsdcAta);
+    // Using Jest expect instead of Chai assert
+    expect(initialCustomerBalance.toString()).toBe(mintAmount.toString());
   });
 
-  it("Processes a payment", async () => {
-    const [loyaltyCardPDA] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("loyalty"), customer.publicKey.toBuffer(), merchant.publicKey.toBuffer()],
-      program.programId
-    );
-    console.log("loyaltyCardPDA:", loyaltyCardPDA.toBase58());
-    console.log("customer balance:", (await provider.connection.getBalance(customer.publicKey)).toString());
+  test("Initialise la carte de fidélité et traite le premier paiement", async () => {
+    const paymentAmount = new BN(50 * 10 ** 6);
 
-    await program.methods.processPayment(new anchor.BN(50), usdcMint)
+    const customerBalanceBefore = await getTokenBalance(customerUsdcAta);
+    const merchantBalanceBefore = await getTokenBalance(merchantUsdcAta);
+
+    await program.methods
+      .processPayment(paymentAmount, usdcMint)
       .accounts({
         customer: customer.publicKey,
         merchant: merchant.publicKey,
-        merchantUsdcAta: merchantUsdcAta,
-        customerUsdcAta: customerUsdcAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId
       })
-      .signers([merchant])
-      .rpc();
+      .signers([customer])
+      .rpc({ skipPreflight: true });
 
-    const loyaltyCard = await program.account.loyaltyCard.fetch(loyaltyCardPDA);
-    console.log("Loyalty Points:", loyaltyCard.loyaltyPoints.toString());
+    // --- Assertions with Jest ---
+    const loyaltyCardAccount = await program.account.loyaltyCard.fetch(loyaltyCardPda);
+    expect(loyaltyCardAccount.merchant.equals(merchant.publicKey)).toBeTruthy();
+    expect(loyaltyCardAccount.customer.equals(customer.publicKey)).toBeTruthy();
+    expect(loyaltyCardAccount.loyaltyPoints.toString()).toBe(paymentAmount.toString());
+    expect(loyaltyCardAccount.threshold.toString()).toBe("100");
+    expect(loyaltyCardAccount.refundPercentage).toBe(15);
+    expect(loyaltyCardAccount.mintAddress.equals(usdcMint)).toBeTruthy();
+
+    const customerBalanceAfter = await getTokenBalance(customerUsdcAta);
+    const merchantBalanceAfter = await getTokenBalance(merchantUsdcAta);
+
+    expect((customerBalanceBefore - customerBalanceAfter).toString()).toBe(paymentAmount.toString());
+    expect((merchantBalanceAfter - merchantBalanceBefore).toString()).toBe(paymentAmount.toString());
+
+    const nftAssetInfo = await connection.getAccountInfo(nftAssetPda);
+    expect(nftAssetInfo).toBeTruthy();
+    expect(nftAssetInfo?.owner.equals(MPL_CORE_ID)).toBeTruthy();
   });
 
-  it("Reaches the treshold", async () => {
-    const [loyaltyCardPDA] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("loyalty"), customer.publicKey.toBuffer(), merchant.publicKey.toBuffer()],
-      program.programId
-    );
-    console.log("loyaltyCardPDA:", loyaltyCardPDA.toBase58());
+  test("Met à jour la carte de fidélité avec un paiement supplémentaire", async () => {
+    const additionalPaymentAmount = new BN(75 * 10 ** 6);
+    const initialPoints = new BN(50 * 10 ** 6);
+    const expectedTotalPoints = initialPoints.add(additionalPaymentAmount);
 
-    await program.methods.processPayment(new anchor.BN(51), usdcMint)
+    const customerBalanceBefore = await getTokenBalance(customerUsdcAta);
+    const merchantBalanceBefore = await getTokenBalance(merchantUsdcAta);
+
+    await program.methods
+      .processPayment(additionalPaymentAmount, usdcMint)
       .accounts({
         customer: customer.publicKey,
         merchant: merchant.publicKey,
-        merchantUsdcAta: merchantUsdcAta,
-        customerUsdcAta: customerUsdcAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId
       })
-      .signers([merchant])
-      .rpc();
+      .signers([customer])
+      .rpc({ skipPreflight: true });
 
-    const loyaltyCard = await program.account.loyaltyCard.fetch(loyaltyCardPDA);
-    console.log("Loyalty Points:", loyaltyCard.loyaltyPoints.toString());
-    console.log("Final customer balance:", (await provider.connection.getBalance(customer.publicKey)).toString());
+    // --- Assertions with Jest ---
+    const loyaltyCardAccount = await program.account.loyaltyCard.fetch(loyaltyCardPda);
+    expect(loyaltyCardAccount.loyaltyPoints.toString()).toBe(expectedTotalPoints.toString());
+
+    const customerBalanceAfter = await getTokenBalance(customerUsdcAta);
+    const merchantBalanceAfter = await getTokenBalance(merchantUsdcAta);
+    expect((customerBalanceBefore - customerBalanceAfter).toString()).toBe(additionalPaymentAmount.toString());
+    expect((merchantBalanceAfter - merchantBalanceBefore).toString()).toBe(additionalPaymentAmount.toString());
+
+    const nftAssetInfo = await connection.getAccountInfo(nftAssetPda);
+    expect(nftAssetInfo).toBeTruthy();
   });
 
-  it("Closes loyalty card", async () => {
-    // Make sure the loyalty PDA is already initialized
-    const [loyaltyPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("loyalty"),
-        customer.publicKey.toBuffer(),
-        merchant.publicKey.toBuffer(),
-      ],
-      program.programId
-    );
+  test("Ferme la carte de fidélité et rembourse le loyer au marchand", async () => {
+    const merchantSolBalanceBefore = await connection.getBalance(merchant.publicKey);
 
-    const tx = await program.methods
+    await program.methods
       .closeLoyaltyCard()
       .accounts({
-        loyaltyCard: loyaltyPda,
+        loyaltyCard: loyaltyCardPda,
         customer: customer.publicKey,
         merchant: merchant.publicKey,
       })
-      .signers([customer]) // make sure the customer is signing, as they are signer in context
+      .signers([customer])
       .rpc();
 
-    console.log("Closed loyalty card with tx:", tx);
+    // --- Assertions with Jest ---
+    // Vérifier que fetch échoue (l'account n'existe plus)
+    await expect(
+      program.account.loyaltyCard.fetch(loyaltyCardPda)
+    ).rejects.toThrow();
+
+    const merchantSolBalanceAfter = await connection.getBalance(merchant.publicKey);
+    expect(merchantSolBalanceAfter).toBeGreaterThan(merchantSolBalanceBefore);
+    console.log(`Solde Merchant Avant: ${merchantSolBalanceBefore}, Après: ${merchantSolBalanceAfter}`);
   });
 
+  test("Ne doit pas permettre de fermer la carte par un tiers", async () => {
+    // Setup: Recréer une carte
+    const anotherCustomer = Keypair.generate();
+    await airdrop(anotherCustomer.publicKey);
+    const [newCardPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("loyalty"), anotherCustomer.publicKey.toBuffer(), merchant.publicKey.toBuffer()], program.programId);
+    const anotherCustomerUsdcAta = getAssociatedTokenAddressSync(usdcMint, anotherCustomer.publicKey);
+
+    const tx = new Transaction().add(createAssociatedTokenAccountInstruction(provider.wallet.publicKey, anotherCustomerUsdcAta, anotherCustomer.publicKey, usdcMint));
+    await provider.sendAndConfirm(tx);
+    // @ts-ignore
+    await mintTo(connection, provider.wallet.payer, usdcMint, anotherCustomerUsdcAta, mintAuthority, BigInt(10 * 10 ** 6));
+
+    await program.methods
+      .processPayment(new BN(10 * 10 ** 6), usdcMint)
+      .accounts({
+        customer: anotherCustomer.publicKey,
+        merchant: merchant.publicKey,
+      })
+      .signers([anotherCustomer])
+      .rpc({ skipPreflight: true });
+
+    // Tentative de fermeture par le tiers (wrong customer)
+    await expect(
+      program.methods
+        .closeLoyaltyCard()
+        .accounts({
+          loyaltyCard: newCardPda,
+          customer: anotherCustomer.publicKey, // Le vrai client associé
+          merchant: merchant.publicKey,
+        })
+        .signers([customer]) // <<< Tiers signataire non autorisé par has_one=customer
+        .rpc()
+    ).rejects.toThrow();
+
+    // Nettoyage: Fermeture correcte par le client
+    await program.methods
+      .closeLoyaltyCard()
+      .accounts({ loyaltyCard: newCardPda, customer: anotherCustomer.publicKey, merchant: merchant.publicKey })
+      .signers([anotherCustomer])
+      .rpc();
+  });
 });

@@ -1,5 +1,5 @@
 {
-  "address": "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47",
+  "address": "BtgH4rB83RtHFyTpjkaaHTGn2LMNHo837BtNF9KJqMMf",
   "metadata": {
     "name": "loyalty_program",
     "version": "0.1.0",
@@ -112,12 +112,12 @@
         },
         {
           "name": "customer",
-          "writable": true
+          "writable": true,
+          "signer": true
         },
         {
           "name": "merchant",
-          "writable": true,
-          "signer": true
+          "writable": true
         },
         {
           "name": "merchant_usdc_ata",
@@ -371,6 +371,34 @@
           "address": "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
         },
         {
+          "name": "nft_asset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mpl_core_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -416,6 +444,11 @@
       "code": 6001,
       "name": "Unauthorized",
       "msg": "Only the merchant who owns this card can close it."
+    },
+    {
+      "code": 6002,
+      "name": "FailedToCreateCollection",
+      "msg": "Failed to create NFT collection."
     }
   ],
   "types": [
