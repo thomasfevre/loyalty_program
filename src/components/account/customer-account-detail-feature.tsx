@@ -1,6 +1,6 @@
 "use client";
 
-import { PublicKey as MetaplexPublicKey } from "@metaplex-foundation/umi";
+import { PublicKey as MetaplexPublicKey, publicKey as umiPublicKey } from "@metaplex-foundation/umi";
 import { PublicKey } from "@solana/web3.js";
 import { useMemo, useState } from "react";
 import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
@@ -19,7 +19,7 @@ import {
 import toast from "react-hot-toast";
 import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import { deriveLoyaltyPDA } from "../LoyaltyPay/accountUtils/getPDAs";
-import { fetchNftWithMintAddressAsync } from "../metaplex/utils";
+import { doesCustomerOwnMerchantAsset, fetchNftWithMintAddressAsync } from "../metaplex/utils";
 import axios from "axios";
 import Image from "next/image";
 import { BN } from "@coral-xyz/anchor";
@@ -81,8 +81,11 @@ export default function CustomerAccountDetailFeature() {
       const loyaltyCards = [];
       for (const card of cards) {
         const { mintAddress, customer } = card.account;
+      
         if (customer.toString() !== address.toString()) continue;
         if (card.publicKey) {
+          const customerHasNft = await doesCustomerOwnMerchantAsset(umiPublicKey(card.account.mintAddress), umiPublicKey(card.account.merchant));
+          console.log("Customer has NFT: ", customerHasNft);
           const customerNft = await fetchNftWithMintAddressAsync(
             mintAddress.toString() as MetaplexPublicKey
           );
