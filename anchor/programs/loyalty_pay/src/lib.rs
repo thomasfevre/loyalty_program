@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::pubkey;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::Mint,
+    token_interface::{Mint, TokenAccount as TokenAccountInterface},
     token::{mint_to, MintTo, transfer, Token, TokenAccount, Transfer},
     metadata::{
         create_metadata_accounts_v3,
@@ -13,7 +13,7 @@ use anchor_spl::{
     },
 };
 
-declare_id!("7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47");
+declare_id!("DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc");
 
 #[program]
 pub mod loyalty_program {
@@ -22,38 +22,79 @@ pub mod loyalty_program {
     pub fn process_payment(
         ctx: Context<ProcessPayment>,
         amount: u64,
-        mint_address: Pubkey,
     ) -> Result<()> {
-        let loyalty_card = &mut ctx.accounts.loyalty_card;
-        let customer = &ctx.accounts.customer;
-        let merchant = &ctx.accounts.merchant;
+        let customer_key = ctx.accounts.customer.key();
+        let merchant_key = ctx.accounts.merchant.key();
+        
+        // Check if this is a new loyalty card
+        let is_new = ctx.accounts.loyalty_card.loyalty_points == 0;
+        
+        // If this is a new loyalty card, initialize it
+        if is_new {
+            ctx.accounts.loyalty_card.merchant = merchant_key;
+            ctx.accounts.loyalty_card.customer = customer_key;
+            ctx.accounts.loyalty_card.threshold = 100; // Example threshold value (adjust as needed)
+            ctx.accounts.loyalty_card.refund_percentage = 15; // 15% refund
 
-        // If this is a new loyalty card, initialize it.
-        if loyalty_card.loyalty_points == 0 {
-            loyalty_card.merchant = merchant.key();
-            loyalty_card.customer = customer.key();
-            loyalty_card.threshold = 100; // Example threshold value (adjust as needed)
-            loyalty_card.refund_percentage = 15; // 15% refund
-            loyalty_card.mint_address = mint_address;
+            // Initialize token metadata
+            let token_metadata = DataV2 {
+                name: "Loyalty Token".to_string(),
+                symbol: "LOYAL".to_string(),
+                uri: "https://example.com/metadata.json".to_string(),
+                seller_fee_basis_points: 0,
+                creators: None,
+                collection: None,
+                uses: None,
+            };
+
+            // Initialize and mint the token (passing individual accounts to avoid borrowing issues)
+            init_token(
+                &customer_key,
+                &merchant_key,
+                &ctx.accounts.metadata,
+                &ctx.accounts.mint,
+                &ctx.accounts.merchant,
+                &ctx.accounts.system_program,
+                &ctx.accounts.token_metadata_program,
+                &ctx.accounts.rent,
+                &ctx.bumps.mint,
+                token_metadata,
+            )?;
+            
+            mint_loyalty_token(
+                &customer_key,
+                &merchant_key,
+                &ctx.accounts.mint,
+                &ctx.accounts.token_destination,
+                &ctx.accounts.token_program,
+                &ctx.bumps.mint,
+            )?;
+
+            // Set the mint address in the loyalty card
+            ctx.accounts.loyalty_card.mint_address = ctx.accounts.mint.key();
         }
 
-        // Save the current points, then add the new payment amount.
-        let previous_points = loyalty_card.loyalty_points;
-        loyalty_card.loyalty_points = loyalty_card
+        // Save the current points
+        let previous_points = ctx.accounts.loyalty_card.loyalty_points;
+        
+        // Add the new payment amount
+        ctx.accounts.loyalty_card.loyalty_points = ctx.accounts.loyalty_card
             .loyalty_points
             .checked_add(amount)
             .ok_or(ErrorCode::Overflow)?;
 
-        // Check if threshold is just reached or exceeded.
-        if previous_points < loyalty_card.threshold
-            && loyalty_card.loyalty_points >= loyalty_card.threshold
+        // Check if threshold is just reached or exceeded
+        if previous_points < ctx.accounts.loyalty_card.threshold
+            && ctx.accounts.loyalty_card.loyalty_points >= ctx.accounts.loyalty_card.threshold
         {
-            // Calculate refund (15% of the current payment amount).
-            let refund = (amount as u128 * loyalty_card.refund_percentage as u128 / 100) as u64;
+            // Calculate refund (15% of the current payment amount)
+            let refund = (amount as u128 * ctx.accounts.loyalty_card.refund_percentage as u128 / 100) as u64;
             msg!("Threshold reached: refunding {} USDC", refund);
-            let decimals = 10 * ctx.accounts.usdc_account.decimals;
+            
+            // Fixed decimal calculation
+            let usdc_decimals = ctx.accounts.usdc_mint.decimals as u32;
             let refund_amount = refund
-                .checked_mul(decimals.into())
+                .checked_mul(10u64.pow(usdc_decimals))
                 .ok_or(ErrorCode::Overflow)?;
 
             // Perform USDC refund transfer
@@ -69,15 +110,15 @@ pub mod loyalty_program {
             transfer(cpi_ctx, refund_amount)?;
 
             // Update loyalty points after refund --> set to 0
-            loyalty_card.loyalty_points = loyalty_card
+            ctx.accounts.loyalty_card.loyalty_points = ctx.accounts.loyalty_card
                 .loyalty_points
-                .checked_sub(loyalty_card.threshold)
+                .checked_sub(ctx.accounts.loyalty_card.threshold)
                 .ok_or(ErrorCode::Overflow)?;
         }
 
         msg!(
             "Loyalty card updated. New loyalty points: {}",
-            loyalty_card.loyalty_points
+            ctx.accounts.loyalty_card.loyalty_points
         );
         Ok(())
     }
@@ -93,67 +134,73 @@ pub mod loyalty_program {
     }
 }
 
-pub fn init_token(ctx: Context<InitToken>, metadata: DataV2) -> Result<()> {
-    let customer = &ctx.accounts.customer.key();
-    let merchant = &ctx.accounts.merchant.key();
-    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref()];
-    let signer = [&seeds[..]];
-
-    let token_data: DataV2 = DataV2 {
-        name: metadata.name,
-        symbol: metadata.symbol,
-        uri: metadata.uri,
-        seller_fee_basis_points: 0,
-        creators: None,
-        collection: None,
-        uses: None,
-    };
+// Helper function to initialize the token - restructured to avoid borrowing context
+fn init_token<'info>(
+    customer_key: &Pubkey,
+    merchant_key: &Pubkey,
+    metadata: &UncheckedAccount<'info>,
+    mint: &InterfaceAccount<'info, Mint>,
+    merchant: &Signer<'info>,
+    system_program: &Program<'info, System>,
+    token_metadata_program: &Program<'info, Metaplex>,
+    rent: &Sysvar<'info, Rent>,
+    bump: &u8,
+    token_metadata: DataV2,
+) -> Result<()> {
+    let seeds = &[b"mint", customer_key.as_ref(), merchant_key.as_ref(), &[*bump]];
+    let signer = &[&seeds[..]];
 
     let metadata_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_metadata_program.to_account_info(),
+        token_metadata_program.to_account_info(),
         CreateMetadataAccountsV3 {
-            payer:  ctx.accounts.merchant.to_account_info(),
-            update_authority: ctx.accounts.mint.to_account_info(),
-            mint: ctx.accounts.mint.to_account_info(),
-            metadata: ctx.accounts.metadata.to_account_info(),
-            mint_authority: ctx.accounts.mint.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
-            rent: ctx.accounts.rent.to_account_info(),
+            metadata: metadata.to_account_info(),
+            mint: mint.to_account_info(),
+            mint_authority: mint.to_account_info(),
+            payer: merchant.to_account_info(),
+            update_authority: mint.to_account_info(),
+            system_program: system_program.to_account_info(),
+            rent: rent.to_account_info(),
         },
-        &signer
+        signer,
     );
 
     create_metadata_accounts_v3(
         metadata_ctx,
-        token_data,
+        token_metadata,
         false,
         true,
         None,
     )?;
 
-    msg!("Token mint created successfully.");
+    msg!("Token metadata created successfully.");
 
     Ok(())
 }
 
-pub fn mint_token(ctx: Context<MintToken>) -> Result<()> {
-    let customer = &ctx.accounts.customer.key();
-    let merchant = &ctx.accounts.merchant.key();
-    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref()];
-    let signer = [&seeds[..]];
+// Helper function to mint tokens to customer - restructured to avoid borrowing context
+fn mint_loyalty_token<'info>(
+    customer_key: &Pubkey,
+    merchant_key: &Pubkey,
+    mint: &InterfaceAccount<'info, Mint>,
+    token_destination: &Account<'info, TokenAccount>,
+    token_program: &Program<'info, Token>,
+    bump: &u8,
+) -> Result<()> {
+    let seeds = &[b"mint", customer_key.as_ref(), merchant_key.as_ref(), &[*bump]];
+    let signer = &[&seeds[..]];
 
-    mint_to(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            MintTo {
-                authority: ctx.accounts.mint.to_account_info(),
-                to: ctx.accounts.destination.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-            },
-            &signer,
-        ),
-        1,
-    )?;
+    let mint_ctx = CpiContext::new_with_signer(
+        token_program.to_account_info(),
+        MintTo {
+            mint: mint.to_account_info(),
+            to: token_destination.to_account_info(),
+            authority: mint.to_account_info(),
+        },
+        signer,
+    );
+
+    mint_to(mint_ctx, 1)?;
+    msg!("Loyalty token minted successfully.");
 
     Ok(())
 }
@@ -169,35 +216,63 @@ pub struct ProcessPayment<'info> {
     )]
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
-    #[account(mut)]
-    pub customer: SystemAccount<'info>,
+    #[account()]
+    pub customer: Signer<'info>,
 
     #[account(mut, signer)]
-    pub merchant: AccountInfo<'info>,
+    pub merchant: Signer<'info>,
 
     #[account(
         mut,
-        associated_token::mint = &USDC_MINT,
+        associated_token::mint = usdc_mint,
         associated_token::authority = merchant,
     )]
     pub merchant_usdc_ata: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        associated_token::mint = &USDC_MINT,
+        associated_token::mint = usdc_mint,
         associated_token::authority = customer,
     )]
     pub customer_usdc_ata: Account<'info, TokenAccount>,
 
     #[account(
-        mut,
         address = USDC_MINT,
     )]
-    pub usdc_account: InterfaceAccount<'info, Mint>,
+    pub usdc_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        init_if_needed,
+        payer = merchant,
+        seeds = [b"mint", customer.key().as_ref(), merchant.key().as_ref()],
+        bump,
+        mint::decimals = 0,
+        mint::authority = mint,
+    )]
+    pub mint: InterfaceAccount<'info, Mint>,
+
+    /// CHECK: This account is checked in the instruction
+    #[account(
+        mut,
+        seeds = ["metadata".as_bytes(), token_metadata_program.key().as_ref(), mint.key().as_ref()],
+        seeds::program = token_metadata_program.key(),
+        bump,
+    )]
+    pub metadata: UncheckedAccount<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = merchant,
+        associated_token::mint = mint,
+        associated_token::authority = customer,
+    )]
+    pub token_destination: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
-
     pub system_program: Program<'info, System>,
+    pub token_metadata_program: Program<'info, Metaplex>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -213,69 +288,16 @@ pub struct CloseLoyaltyCard<'info> {
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
     #[account(mut, signer)]
-    pub customer: SystemAccount<'info>,
+    pub customer: Signer<'info>,
 
     #[account(mut)]
     pub merchant: SystemAccount<'info>,
-}
 
-#[derive(Accounts)]
-pub struct InitToken<'info> {
-    /// CHECK: New Metaplex Account being created
-    #[account(mut)]
-    pub metadata: UncheckedAccount<'info>,
-    #[account(
-        init,
-        seeds = [b"mint", customer.key().as_ref(), merchant.key().as_ref()],
-        bump,
-        payer = merchant,
-        mint::decimals = 0,
-        mint::authority = mint,
-    )]
-    pub mint: InterfaceAccount<'info, Mint>,
-  
-    #[account()]
-    pub customer: AccountInfo<'info>,
-    #[account(mut, signer)]
-    pub merchant: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub token_metadata_program: Program<'info, Metaplex>,
 }
-
-#[derive(Accounts)]
-pub struct MintToken<'info> {
-    #[account(
-        mut,
-        seeds = [b"mint", customer.key().as_ref(), merchant.key().as_ref()],
-        bump,
-        mint::authority = mint,
-    )]
-    pub mint: InterfaceAccount<'info, Mint>,
-
-    #[account(
-        init_if_needed,
-        payer = merchant,
-        associated_token::mint = mint,
-        associated_token::authority = customer,
-    )]
-    pub destination: Account<'info, TokenAccount>,
- 
-    #[account()]
-    pub customer: AccountInfo<'info>, 
-    #[account(mut, signer)]
-    pub merchant: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
-
 
 #[account]
 pub struct LoyaltyCard {
-    /// CHECK: The merchant account is verified and signed by the merchant, so it's safe.
     pub merchant: Pubkey,
     pub customer: Pubkey,
     pub loyalty_points: u64,

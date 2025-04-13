@@ -6,7 +6,7 @@ resolution = true
 skip-lint = true
 
 [programs.localnet]
-LoyaltyProgram = "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47"
+LoyaltyProgram = "DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc"
 
 [registry]
 url = "https://api.apr.dev"

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/loyalty_program.json`.
  */
 export type LoyaltyProgram = {
-  "address": "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47",
+  "address": "DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc",
   "metadata": {
     "name": "loyaltyProgram",
     "version": "0.1.0",
