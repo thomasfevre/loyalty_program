@@ -4,7 +4,7 @@ use anchor_lang::solana_program::pubkey;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::Mint,
-    token::{mint_to, Mint, MintTo, transfer, Token, TokenAccount, Transfer}
+    token::{mint_to, MintTo, transfer, Token, TokenAccount, Transfer},
     metadata::{
         create_metadata_accounts_v3,
         mpl_token_metadata::types::DataV2,
@@ -94,7 +94,9 @@ pub mod loyalty_program {
 }
 
 pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
-    let seeds = &["mint".as_bytes(), ctx.accounts.customer.key().as_ref(), ctx.accounts.merchant.key().as_ref(), &[ctx.bumps.mint]];
+    let customer = &ctx.accounts.customer;
+    let merchant = &ctx.accounts.merchant;
+    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref(), &[ctx.bumps.mint]];
     let signer = [&seeds[..]];
 
     let token_data: DataV2 = DataV2 {
@@ -110,7 +112,7 @@ pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<
     let metadata_ctx = CpiContext::new_with_signer(
         ctx.accounts.token_metadata_program.to_account_info(),
         CreateMetadataAccountsV3 {
-            payer: ctx.accounts.payer.to_account_info(),
+            payer: merchant.to_account_info(),
             update_authority: ctx.accounts.mint.to_account_info(),
             mint: ctx.accounts.mint.to_account_info(),
             metadata: ctx.accounts.metadata.to_account_info(),
@@ -135,7 +137,9 @@ pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<
 }
 
 pub fn mint_token(ctx: Context<MintToken>) -> Result<()> {
-    let seeds = &["mint".as_bytes(), ctx.accounts.customer.key().as_ref(), ctx.accounts.merchant.key().as_ref(), &[ctx.bumps.mint]];
+    let customer = &ctx.accounts.customer;
+    let merchant = &ctx.accounts.merchant;
+    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref(), &[ctx.bumps.mint]];
     let signer = [&seeds[..]];
 
     mint_to(
@@ -230,6 +234,7 @@ pub struct InitToken<'info> {
         payer = merchant,
         mint::decimals = params.decimals,
         mint::authority = mint,
+        mint::owner = customer,
     )]
     pub mint: Account<'info, Mint>,
   
@@ -250,6 +255,7 @@ pub struct MintToken<'info> {
         seeds = [b"mint", customer.key().as_ref(), merchant.key().as_ref()],
         bump,
         mint::authority = mint,
+        mint::owner = customer,
     )]
     pub mint: Account<'info, Mint>,
     #[account(
