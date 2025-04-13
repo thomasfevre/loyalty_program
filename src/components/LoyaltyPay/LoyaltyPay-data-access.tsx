@@ -39,17 +39,15 @@ export function useLoyaltyPayProgram() {
     mutationKey: ["LoyaltyPay", "process-payment", { cluster }],
     mutationFn: async ({
       amount,
-      mintPublicKey,
       customer,
       merchant,
     }: {
       amount: number;
-      mintPublicKey: PublicKey;
       customer: PublicKey;
       merchant: PublicKey;
     }) =>
       program.methods
-        .processPayment(new BN(amount), mintPublicKey)
+        .processPayment(new BN(amount))
         .accounts({ customer, merchant })
         .rpc(),
     onSuccess: (signature) => {
