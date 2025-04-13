@@ -93,10 +93,10 @@ pub mod loyalty_program {
     }
 }
 
-pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
-    let customer = &ctx.accounts.customer;
-    let merchant = &ctx.accounts.merchant;
-    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref(), &[ctx.bumps.mint]];
+pub fn init_token(ctx: Context<InitToken>, metadata: DataV2) -> Result<()> {
+    let customer = &ctx.accounts.customer.key();
+    let merchant = &ctx.accounts.merchant.key();
+    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref()];
     let signer = [&seeds[..]];
 
     let token_data: DataV2 = DataV2 {
@@ -112,7 +112,7 @@ pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<
     let metadata_ctx = CpiContext::new_with_signer(
         ctx.accounts.token_metadata_program.to_account_info(),
         CreateMetadataAccountsV3 {
-            payer: merchant.to_account_info(),
+            payer:  ctx.accounts.merchant.to_account_info(),
             update_authority: ctx.accounts.mint.to_account_info(),
             mint: ctx.accounts.mint.to_account_info(),
             metadata: ctx.accounts.metadata.to_account_info(),
@@ -137,9 +137,9 @@ pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<
 }
 
 pub fn mint_token(ctx: Context<MintToken>) -> Result<()> {
-    let customer = &ctx.accounts.customer;
-    let merchant = &ctx.accounts.merchant;
-    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref(), &[ctx.bumps.mint]];
+    let customer = &ctx.accounts.customer.key();
+    let merchant = &ctx.accounts.merchant.key();
+    let seeds = &["mint".as_bytes(), customer.as_ref(), merchant.as_ref()];
     let signer = [&seeds[..]];
 
     mint_to(
@@ -220,9 +220,6 @@ pub struct CloseLoyaltyCard<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    params: InitTokenParams
-)]
 pub struct InitToken<'info> {
     /// CHECK: New Metaplex Account being created
     #[account(mut)]
@@ -232,16 +229,15 @@ pub struct InitToken<'info> {
         seeds = [b"mint", customer.key().as_ref(), merchant.key().as_ref()],
         bump,
         payer = merchant,
-        mint::decimals = params.decimals,
+        mint::decimals = 0,
         mint::authority = mint,
-        mint::owner = customer,
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: InterfaceAccount<'info, Mint>,
   
     #[account()]
-    pub customer: SystemAccount<'info>,
+    pub customer: AccountInfo<'info>,
     #[account(mut, signer)]
-    pub merchant: SystemAccount<'info>,
+    pub merchant: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -255,9 +251,9 @@ pub struct MintToken<'info> {
         seeds = [b"mint", customer.key().as_ref(), merchant.key().as_ref()],
         bump,
         mint::authority = mint,
-        mint::owner = customer,
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: InterfaceAccount<'info, Mint>,
+
     #[account(
         init_if_needed,
         payer = merchant,
@@ -267,9 +263,9 @@ pub struct MintToken<'info> {
     pub destination: Account<'info, TokenAccount>,
  
     #[account()]
-    pub customer: SystemAccount<'info>,
+    pub customer: AccountInfo<'info>, 
     #[account(mut, signer)]
-    pub merchant: SystemAccount<'info>,
+    pub merchant: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
