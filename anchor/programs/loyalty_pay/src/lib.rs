@@ -13,7 +13,7 @@ use anchor_spl::{
     },
 };
 
-declare_id!("DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc");
+declare_id!("EzQYKBqK5cSrZwNqGzUbizgzPjw31ovj4FomFCbghPs4");
 
 #[program]
 pub mod loyalty_program {
@@ -217,7 +217,7 @@ pub struct ProcessPayment<'info> {
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
     #[account()]
-    pub customer: Signer<'info>,
+    pub customer: SystemAccount<'info>,
 
     #[account(mut, signer)]
     pub merchant: Signer<'info>,

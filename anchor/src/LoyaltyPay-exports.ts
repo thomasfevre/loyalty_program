@@ -20,7 +20,7 @@ export function getLoyaltyPayProgramId(cluster: Cluster) {
   switch (cluster) {
     case 'devnet':
       // This is the program ID for the LoyaltyPay program on devnet and testnet.
-      return new PublicKey('DG415jpPKStJC9uUb77e4UUXVnQ843P1dLB7F9v9sjSc')
+      return new PublicKey('EzQYKBqK5cSrZwNqGzUbizgzPjw31ovj4FomFCbghPs4')
     case 'testnet':
       // This is the program ID for the LoyaltyPay program on devnet and testnet.
       return new PublicKey('6WQoS7AUSzB9dBC1QKCbKRySxZuj6oVYUdTNHtkXYVio')

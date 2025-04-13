@@ -94,137 +94,23 @@ export default function MerchantAccountDetailFeature() {
       return;
     }
     console.log(
-      "TODO Processing loyalty update...",
+      "Processing loyalty update...",
       wallet.publicKey.toString(),
       payerPubKey.toString()
     );
 
     try {
-      // Check if the customer has a PDA with the merchant
-      let loyaltyCardAccount;
-      try {
-        const customerPDA = deriveLoyaltyPDA(
-          payerPubKey,
-          wallet.publicKey,
-          cluster.network as Cluster
-        );
-        loyaltyCardAccount = await program.account.loyaltyCard.fetch(
-          customerPDA
-        );
-        console.log("Customer PDA: ", loyaltyCardAccount);
-      } catch (err) {
-        console.log("No loyalty card found for this customer", err);
-      }
-
-      // Check if the customer already own an NFT from the merchant
-      const customerHasNft = await doesCustomerOwnMerchantAsset(
-        loyaltyCardAccount?.mintAddress
-          ? umiPublicKey(loyaltyCardAccount.mintAddress)
-          : umiPublicKey(wallet.publicKey.toString()), // fake data if no mint address
-        umiPublicKey(wallet.publicKey.toString())
-      );
-      console.log("Customer has nft?: ", customerHasNft);
-      // If not, mint a new NFT
-      if (!customerHasNft && !loyaltyCardAccount) {
-        console.log("Minting NFT...");
-        const { tx, mintPublicKey } = await mintCustomerNft(
-          wallet,
-          payerPubKey.toString()
-        );
-        if (!wallet.signTransaction) {
-          throw new Error("Wallet does not support signTransaction");
-        }
-        const txSigned = await wallet.signTransaction(tx);
-        console.log("tx Object: ", txSigned);
-        const txHash = await connection?.sendRawTransaction(
-          txSigned.serialize()
-        );
-        console.log("txHash: ", txHash);
-        const latestBlockhash = await connection.getLatestBlockhash();
-        const confirmationStrategy = {
-          signature: txHash,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        };
-        const confirmedTx = await connection?.confirmTransaction(
-          confirmationStrategy,
-          "confirmed"
-        );
-        if (!confirmedTx) {
-          throw new Error("Transaction not confirmed");
-        }
-        console.log("Confirmed TX: ", confirmedTx);
-        console.log("Minted NFT:", mintPublicKey);
-
-        // Update the loyalty program
-        const pgrmTx = await program.methods
-          .processPayment(new BN(amount), new PublicKey(mintPublicKey))
-          .accounts({
-            customer: payerPubKey,
-            merchant: wallet.publicKey,
-          })
-          .rpc();
-        toast.success(`Loyalty updated! TX: ${pgrmTx}`);
-        setStatus("Loyalty updated successfully!");
-      } else {
-        // else upgrade the nft uri a new reward tier is reached
-        const loyaltyCardPDA = deriveLoyaltyPDA(payerPubKey, wallet.publicKey, cluster.network as Cluster);
-        const oldLoyaltyPoints = loyaltyCardAccount?.loyaltyPoints || 0;
-        
-        // Call the processPaiement method to add the points to the loyalty card
-        // Update the loyalty program
-       
-        const pgrmTx = await program.methods
-          .processPayment(
-            new BN(amount),
-            loyaltyCardAccount?.mintAddress
-              ? new PublicKey(loyaltyCardAccount.mintAddress)
-              : (() => {
-                  throw new Error("Mint address is undefined");
-                })()
-          )
-          .accounts({
-            customer: payerPubKey,
-            merchant: wallet.publicKey,
-          })
-          .rpc();
-        toast.success(`Loyalty updated! TX: ${pgrmTx}`);
-        setStatus("Loyalty updated successfully!");
-        
-        // Fetch the loyalty card again to get the updated data
-        const newLoyaltyPoints = (await program.account.loyaltyCard.fetch(loyaltyCardPDA)).loyaltyPoints;
-
-        // Then update if a new level is reached
-        let newLevel = -1;
-        if (oldLoyaltyPoints <= new BN(33) && newLoyaltyPoints > new BN(33)) {
-          console.log("Customer reached the second level!");
-          newLevel = 1;
-        } else if (
-          oldLoyaltyPoints <= new BN(66) &&
-          newLoyaltyPoints > new BN(66)
-        ) {
-          console.log("Customer reached the third level!");
-          newLevel = 2;
-        } else if (
-          oldLoyaltyPoints <= new BN(100) &&
-          newLoyaltyPoints > new BN(100)
-        ) {  
-          console.log("Customer reached the fourth level!");
-          newLevel = 3;
-        } else {
-          newLevel = 0;
-        }
-
-        if (newLevel >= 0) {
-          const update = await updateNft(
-            newLevel,
-            loyaltyCardAccount?.mintAddress,
-            wallet,
-            connection
-          );
-        }
-      }
-
+      // Update the loyalty program
+      const pgrmTx = await program.methods
+        .processPayment(new BN(amount))
+        .accounts({
+          customer: payerPubKey,
+          merchant: wallet.publicKey,
+        })
+        .rpc();
+      toast.success(`Loyalty updated! TX: ${pgrmTx}`);
+      setStatus("Loyalty updated successfully!");
+     
       
     } catch (err) {
       console.error(err);
