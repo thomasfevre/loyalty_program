@@ -9,8 +9,8 @@ umi.use(mplTokenMetadata());
 export let metadataUris: string[] = [
     "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_common.json",
     "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_rare.json",
-    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_legendary.json",
-    "https://ipfs.io/ipfs/bafybeihl72qo2itx5tvv34rjtoxju4rcwo4edio33ucrhltbyvgocmuiai/metadata_legendary.json"
+    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_epic.json",
+    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_legendary.json"
 ]
 
 

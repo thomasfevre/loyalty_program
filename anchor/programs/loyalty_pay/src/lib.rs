@@ -1,4 +1,4 @@
-use crate::constants::USDC_MINT;
+use crate::constants::*;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::pubkey;
 use anchor_spl::{
@@ -10,6 +10,7 @@ use anchor_spl::{
         mpl_token_metadata::types::DataV2,
         CreateMetadataAccountsV3, 
         Metadata as Metaplex,
+        update_metadata_accounts_v2, UpdateMetadataAccountsV2
     },
 };
 
@@ -25,9 +26,23 @@ pub mod loyalty_program {
     ) -> Result<()> {
         let customer_key = ctx.accounts.customer.key();
         let merchant_key = ctx.accounts.merchant.key();
+
+        // Save the current points
+        let previous_points = ctx.accounts.loyalty_card.loyalty_points;
+        
+        // Add the new payment amount
+        ctx.accounts.loyalty_card.loyalty_points = ctx.accounts.loyalty_card
+            .loyalty_points
+            .checked_add(amount)
+            .ok_or(ErrorCode::Overflow)?;
         
         // Check if this is a new loyalty card
-        let is_new = ctx.accounts.loyalty_card.loyalty_points == 0;
+        let is_new = ctx.accounts.loyalty_card.mint_address == Pubkey::default();
+        if is_new {
+            msg!("Creating new loyalty card for customer: {}", customer_key);
+        } else {
+            msg!("Updating existing loyalty card for customer: {}", customer_key);
+        }
         
         // If this is a new loyalty card, initialize it
         if is_new {
@@ -72,20 +87,61 @@ pub mod loyalty_program {
 
             // Set the mint address in the loyalty card
             ctx.accounts.loyalty_card.mint_address = ctx.accounts.mint.key();
-        }
+        } else {
+            match (previous_points, ctx.accounts.loyalty_card.loyalty_points) {
+                (prev, curr) if prev >= 100 && curr < 100 => {
+                    msg!("Back to level Common");
+                    update_nft_uri(
+                        &ctx.accounts.metadata,
+                        &ctx.accounts.mint,
+                        METADATA_COMMON,
+                        &ctx.accounts.token_metadata_program,
+                        &ctx.accounts.merchant,
+                        &ctx.bumps.mint,
+                    )?;
+                }
+                (prev, curr) if prev <= 33 && curr > 33 => {
+                    msg!("Upgrade to level Rare");
+                    update_nft_uri(
+                        &ctx.accounts.metadata,
+                        &ctx.accounts.mint,
+                        METADATA_RARE,
+                        &ctx.accounts.token_metadata_program,
+                        &ctx.accounts.merchant,
+                        &ctx.bumps.mint,
+                    )?;
+                }
+                (prev, curr) if prev <= 66 && curr > 66 => {
+                    msg!("Upgrade to level Epic");
+                    update_nft_uri(
+                        &ctx.accounts.metadata,
+                        &ctx.accounts.mint,
+                        METADATA_EPIC,
+                        &ctx.accounts.token_metadata_program,
+                        &ctx.accounts.merchant,
+                        &ctx.bumps.mint,
+                    )?;
+                }
+                (prev, curr) if prev < 100 && curr >= 100 => {
+                    msg!("Upgrade to level Legendary");
+                    update_nft_uri(
+                        &ctx.accounts.metadata,
+                        &ctx.accounts.mint,
+                        METADATA_LEGENDARY,
+                        &ctx.accounts.token_metadata_program,
+                        &ctx.accounts.merchant,
+                        &ctx.bumps.mint,
+                    )?;
+                }
+                _ => {}
+            }
 
-        // Save the current points
-        let previous_points = ctx.accounts.loyalty_card.loyalty_points;
+        }
         
-        // Add the new payment amount
-        ctx.accounts.loyalty_card.loyalty_points = ctx.accounts.loyalty_card
-            .loyalty_points
-            .checked_add(amount)
-            .ok_or(ErrorCode::Overflow)?;
 
         // Check if threshold is just reached or exceeded
-        if previous_points < ctx.accounts.loyalty_card.threshold
-            && ctx.accounts.loyalty_card.loyalty_points >= ctx.accounts.loyalty_card.threshold
+        if previous_points >= ctx.accounts.loyalty_card.threshold 
+            && ctx.accounts.loyalty_card.loyalty_points > previous_points
         {
             // Calculate refund (15% of the current payment amount)
             let refund = (amount as u128 * ctx.accounts.loyalty_card.refund_percentage as u128 / 100) as u64;
@@ -202,6 +258,45 @@ fn mint_loyalty_token<'info>(
     mint_to(mint_ctx, 1)?;
     msg!("Loyalty token minted successfully.");
 
+    Ok(())
+}
+
+fn update_nft_uri<'info>(
+    metadata: &UncheckedAccount<'info>,
+    mint: &InterfaceAccount<'info, Mint>,
+    new_uri: &str,
+    token_metadata_program: &Program<'info, Metaplex>,
+    merchant: &Signer<'info>,
+    bump: &u8,
+) -> Result<()> {
+    let seeds = &[b"mint", merchant.key.as_ref(), &[*bump]];
+    let signer = &[&seeds[..]];
+
+    let update_ctx = CpiContext::new_with_signer(
+        token_metadata_program.to_account_info(),
+        UpdateMetadataAccountsV2 {
+            metadata: metadata.to_account_info(),
+            update_authority: mint.to_account_info(),
+        },
+        signer,
+    );
+
+    update_metadata_accounts_v2(
+        update_ctx,
+        Some(DataV2 {
+            name: "Loyalty Token".to_string(),
+            symbol: "LOYAL".to_string(),
+            uri: new_uri.to_string(),
+            seller_fee_basis_points: 0,
+            creators: None,
+            collection: None,
+            uses: None,
+        }),
+        None,
+        None,
+    )?;
+
+    msg!("Updated NFT metadata URI to: {}", new_uri);
     Ok(())
 }
 
@@ -324,4 +419,10 @@ pub enum ErrorCode {
 pub mod constants {
     use super::*;
     pub const USDC_MINT: Pubkey = pubkey!("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
+    pub const METADATA_COMMON: &str = "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_common.json";
+    pub const METADATA_RARE: &str = "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_rare.json";
+    pub const METADATA_EPIC: &str = "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_epic.json";
+    pub const METADATA_LEGENDARY: &str = "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_legendary.json";
 }
+
+
