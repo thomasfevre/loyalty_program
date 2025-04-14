@@ -13,7 +13,7 @@ use anchor_spl::{
     },
 };
 
-declare_id!("EzQYKBqK5cSrZwNqGzUbizgzPjw31ovj4FomFCbghPs4");
+declare_id!("GFPe3K8jXQ7aJDq9yQ82y85EruUkXr4EXdp3SQ6XUp4");
 
 #[program]
 pub mod loyalty_program {
