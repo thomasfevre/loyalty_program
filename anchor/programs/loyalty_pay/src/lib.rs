@@ -1,49 +1,49 @@
-use crate::constants::*;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::pubkey;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount as TokenAccountInterface},
-    token::{mint_to, MintTo, transfer, Token, TokenAccount, Transfer},
     metadata::{
-        create_metadata_accounts_v3,
-        mpl_token_metadata::types::DataV2,
-        CreateMetadataAccountsV3, 
-        Metadata as Metaplex,
-        update_metadata_accounts_v2, UpdateMetadataAccountsV2
+        create_metadata_accounts_v3, mpl_token_metadata::types::DataV2,
+        update_metadata_accounts_v2, CreateMetadataAccountsV3, Metadata as Metaplex,
+        UpdateMetadataAccountsV2,
     },
+    token::{mint_to, transfer, MintTo, Token, TokenAccount, Transfer},
+    token_interface::{Mint},
 };
+use crate::constants::*;
 
-declare_id!("GFPe3K8jXQ7aJDq9yQ82y85EruUkXr4EXdp3SQ6XUp4");
+declare_id!("2baFAWaQA9GYPPCcyVoysvRHEzAAxWJLx54cd69XQkTf");
 
 #[program]
 pub mod loyalty_program {
     use super::*;
 
-    pub fn process_payment(
-        ctx: Context<ProcessPayment>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn process_payment(ctx: Context<ProcessPayment>, amount: u64) -> Result<()> {
         let customer_key = ctx.accounts.customer.key();
         let merchant_key = ctx.accounts.merchant.key();
 
         // Save the current points
         let previous_points = ctx.accounts.loyalty_card.loyalty_points;
-        
+
         // Add the new payment amount
-        ctx.accounts.loyalty_card.loyalty_points = ctx.accounts.loyalty_card
+        ctx.accounts.loyalty_card.loyalty_points = ctx
+            .accounts
+            .loyalty_card
             .loyalty_points
             .checked_add(amount)
             .ok_or(ErrorCode::Overflow)?;
-        
+
         // Check if this is a new loyalty card
         let is_new = ctx.accounts.loyalty_card.mint_address == Pubkey::default();
         if is_new {
             msg!("Creating new loyalty card for customer: {}", customer_key);
         } else {
-            msg!("Updating existing loyalty card for customer: {}", customer_key);
+            msg!(
+                "Updating existing loyalty card for customer: {}",
+                customer_key
+            );
         }
-        
+
         // If this is a new loyalty card, initialize it
         if is_new {
             ctx.accounts.loyalty_card.merchant = merchant_key;
@@ -75,7 +75,7 @@ pub mod loyalty_program {
                 &ctx.bumps.mint,
                 token_metadata,
             )?;
-            
+
             mint_loyalty_token(
                 &customer_key,
                 &merchant_key,
@@ -96,7 +96,8 @@ pub mod loyalty_program {
                         &ctx.accounts.mint,
                         METADATA_COMMON,
                         &ctx.accounts.token_metadata_program,
-                        &ctx.accounts.merchant,
+                        &customer_key,
+                        &merchant_key,
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -107,7 +108,8 @@ pub mod loyalty_program {
                         &ctx.accounts.mint,
                         METADATA_RARE,
                         &ctx.accounts.token_metadata_program,
-                        &ctx.accounts.merchant,
+                        &customer_key,
+                        &merchant_key,
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -118,7 +120,8 @@ pub mod loyalty_program {
                         &ctx.accounts.mint,
                         METADATA_EPIC,
                         &ctx.accounts.token_metadata_program,
-                        &ctx.accounts.merchant,
+                        &customer_key,
+                        &merchant_key,
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -129,24 +132,24 @@ pub mod loyalty_program {
                         &ctx.accounts.mint,
                         METADATA_LEGENDARY,
                         &ctx.accounts.token_metadata_program,
-                        &ctx.accounts.merchant,
+                        &customer_key,
+                        &merchant_key,
                         &ctx.bumps.mint,
                     )?;
                 }
                 _ => {}
             }
-
         }
-        
 
         // Check if threshold is just reached or exceeded
-        if previous_points >= ctx.accounts.loyalty_card.threshold 
+        if previous_points >= ctx.accounts.loyalty_card.threshold
             && ctx.accounts.loyalty_card.loyalty_points > previous_points
         {
             // Calculate refund (15% of the current payment amount)
-            let refund = (amount as u128 * ctx.accounts.loyalty_card.refund_percentage as u128 / 100) as u64;
+            let refund =
+                (amount as u128 * ctx.accounts.loyalty_card.refund_percentage as u128 / 100) as u64;
             msg!("Threshold reached: refunding {} USDC", refund);
-            
+
             // Fixed decimal calculation
             let usdc_decimals = ctx.accounts.usdc_mint.decimals as u32;
             let refund_amount = refund
@@ -166,7 +169,9 @@ pub mod loyalty_program {
             transfer(cpi_ctx, refund_amount)?;
 
             // Update loyalty points after refund --> set to 0
-            ctx.accounts.loyalty_card.loyalty_points = ctx.accounts.loyalty_card
+            ctx.accounts.loyalty_card.loyalty_points = ctx
+                .accounts
+                .loyalty_card
                 .loyalty_points
                 .checked_sub(ctx.accounts.loyalty_card.threshold)
                 .ok_or(ErrorCode::Overflow)?;
@@ -203,7 +208,12 @@ fn init_token<'info>(
     bump: &u8,
     token_metadata: DataV2,
 ) -> Result<()> {
-    let seeds = &[b"mint", customer_key.as_ref(), merchant_key.as_ref(), &[*bump]];
+    let seeds = &[
+        b"mint",
+        customer_key.as_ref(),
+        merchant_key.as_ref(),
+        &[*bump],
+    ];
     let signer = &[&seeds[..]];
 
     let metadata_ctx = CpiContext::new_with_signer(
@@ -220,13 +230,7 @@ fn init_token<'info>(
         signer,
     );
 
-    create_metadata_accounts_v3(
-        metadata_ctx,
-        token_metadata,
-        false,
-        true,
-        None,
-    )?;
+    create_metadata_accounts_v3(metadata_ctx, token_metadata, false, true, None)?;
 
     msg!("Token metadata created successfully.");
 
@@ -242,7 +246,12 @@ fn mint_loyalty_token<'info>(
     token_program: &Program<'info, Token>,
     bump: &u8,
 ) -> Result<()> {
-    let seeds = &[b"mint", customer_key.as_ref(), merchant_key.as_ref(), &[*bump]];
+    let seeds = &[
+        b"mint",
+        customer_key.as_ref(),
+        merchant_key.as_ref(),
+        &[*bump],
+    ];
     let signer = &[&seeds[..]];
 
     let mint_ctx = CpiContext::new_with_signer(
@@ -266,7 +275,8 @@ fn update_nft_uri<'info>(
     mint: &InterfaceAccount<'info, Mint>,
     new_uri: &str,
     token_metadata_program: &Program<'info, Metaplex>,
-    merchant: &Signer<'info>,
+    customer_key: &Pubkey,
+    merchant_key: &Pubkey,
     bump: &u8,
 ) -> Result<()> {
     let seeds = &[b"mint", customer_key.as_ref(), merchant_key.as_ref(), &[*bump]];
@@ -283,6 +293,7 @@ fn update_nft_uri<'info>(
 
     update_metadata_accounts_v2(
         update_ctx,
+        Some(mint.key()),
         Some(DataV2 {
             name: "Loyalty Card NFT".to_string(),
             symbol: "BAGUETTE".to_string(),
@@ -293,7 +304,7 @@ fn update_nft_uri<'info>(
             uses: None,
         }),
         None,
-        None,
+        Some(true),
     )?;
 
     msg!("Updated NFT metadata URI to: {}", new_uri);
@@ -424,5 +435,3 @@ pub mod constants {
     pub const METADATA_EPIC: &str = "https://ipfs.io/ipfs/bafybeifr2u6mbkc5v7luqcg5a4gmn5fpch7klnphs42z4blu6w42p7cyj4/metadata_epic.json";
     pub const METADATA_LEGENDARY: &str = "https://ipfs.io/ipfs/bafybeifr2u6mbkc5v7luqcg5a4gmn5fpch7klnphs42z4blu6w42p7cyj4/metadata_legendary.json";
 }
-
-
