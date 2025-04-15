@@ -1,6 +1,9 @@
 "use client";
 
-import { PublicKey as MetaplexPublicKey, publicKey as umiPublicKey } from "@metaplex-foundation/umi";
+import {
+  PublicKey as MetaplexPublicKey,
+  publicKey as umiPublicKey,
+} from "@metaplex-foundation/umi";
 import { PublicKey } from "@solana/web3.js";
 import { useMemo, useState } from "react";
 import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
@@ -19,10 +22,13 @@ import {
 import toast from "react-hot-toast";
 import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import { deriveLoyaltyPDA } from "../LoyaltyPay/accountUtils/getPDAs";
-import { doesCustomerOwnMerchantAsset, fetchNftWithMintAddressAsync } from "../metaplex/utils";
+import {
+  doesCustomerOwnMerchantAsset,
+  fetchNftWithMintAddressAsync,
+} from "../metaplex/utils";
 import axios from "axios";
 import Image from "next/image";
-import { BN } from "@coral-xyz/anchor";
+import { BN, getProvider } from "@coral-xyz/anchor";
 
 export default function CustomerAccountDetailFeature() {
   const [loyaltyCards, setLoyaltyCards] = useState<
@@ -81,10 +87,13 @@ export default function CustomerAccountDetailFeature() {
       const loyaltyCards = [];
       for (const card of cards) {
         const { mintAddress, customer } = card.account;
-      
+
         if (customer.toString() !== address.toString()) continue;
         if (card.publicKey) {
-          const customerHasNft = await doesCustomerOwnMerchantAsset(umiPublicKey(card.account.mintAddress), umiPublicKey(card.account.merchant));
+          const customerHasNft = await doesCustomerOwnMerchantAsset(
+            umiPublicKey(card.account.mintAddress),
+            umiPublicKey(card.account.merchant)
+          );
           console.log("Customer has NFT: ", customerHasNft);
           const customerNft = await fetchNftWithMintAddressAsync(
             mintAddress.toString() as MetaplexPublicKey
@@ -147,7 +156,7 @@ export default function CustomerAccountDetailFeature() {
       );
       await program.methods
         .closeLoyaltyCard()
-        .accounts({ loyaltyCard:loyaltyPDA, address, merchantPubKey })
+        .accounts({ loyaltyCard: loyaltyPDA, address, merchantPubKey })
         .rpc();
       toast.success("Loyalty card closed successfully!");
     } catch (error) {

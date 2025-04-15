@@ -1,0 +1,4 @@
+version: 2
+web_addr: 0.0.0.0:4040
+log_level: info
+# Configuration is now handled by environment variables in docker-compose.yml
