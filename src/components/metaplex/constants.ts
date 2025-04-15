@@ -7,10 +7,10 @@ export const umi = createUmi(NETWORK!, { commitment: "confirmed" });
 umi.use(mplTokenMetadata());
 
 export let metadataUris: string[] = [
-    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_common.json",
-    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_rare.json",
-    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_epic.json",
-    "https://ipfs.io/ipfs/bafybeiebujdd5abpf4zcckwsgq2ot45cccwhrjebago53sbrzokgzyvhau/metadata_legendary.json"
+    "https://ipfs.io/ipfs/bafybeifr2u6mbkc5v7luqcg5a4gmn5fpch7klnphs42z4blu6w42p7cyj4/metadata_common.json",
+    "https://ipfs.io/ipfs/bafybeifr2u6mbkc5v7luqcg5a4gmn5fpch7klnphs42z4blu6w42p7cyj4/metadata_rare.json",
+    "https://ipfs.io/ipfs/bafybeifr2u6mbkc5v7luqcg5a4gmn5fpch7klnphs42z4blu6w42p7cyj4/metadata_epic.json",
+    "https://ipfs.io/ipfs/bafybeifr2u6mbkc5v7luqcg5a4gmn5fpch7klnphs42z4blu6w42p7cyj4/metadata_legendary.json"
 ]
 
 
