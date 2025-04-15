@@ -53,8 +53,8 @@ pub mod loyalty_program {
 
             // Initialize token metadata
             let token_metadata = DataV2 {
-                name: "Loyalty Token".to_string(),
-                symbol: "LOYAL".to_string(),
+                name: "Loyalty Card NFT".to_string(),
+                symbol: "BAGUETTE".to_string(),
                 uri: "https://example.com/metadata.json".to_string(),
                 seller_fee_basis_points: 0,
                 creators: None,
@@ -269,7 +269,7 @@ fn update_nft_uri<'info>(
     merchant: &Signer<'info>,
     bump: &u8,
 ) -> Result<()> {
-    let seeds = &[b"mint", merchant.key.as_ref(), &[*bump]];
+    let seeds = &[b"mint", customer_key.as_ref(), merchant_key.as_ref(), &[*bump]];
     let signer = &[&seeds[..]];
 
     let update_ctx = CpiContext::new_with_signer(
@@ -284,8 +284,8 @@ fn update_nft_uri<'info>(
     update_metadata_accounts_v2(
         update_ctx,
         Some(DataV2 {
-            name: "Loyalty Token".to_string(),
-            symbol: "LOYAL".to_string(),
+            name: "Loyalty Card NFT".to_string(),
+            symbol: "BAGUETTE".to_string(),
             uri: new_uri.to_string(),
             seller_fee_basis_points: 0,
             creators: None,
