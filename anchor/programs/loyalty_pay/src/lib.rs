@@ -12,7 +12,7 @@ use anchor_spl::{
 };
 use crate::constants::*;
 
-declare_id!("2baFAWaQA9GYPPCcyVoysvRHEzAAxWJLx54cd69XQkTf");
+declare_id!("24rAgLg6RkxhkrS6rp9N7cTZC1GJuembSxha5gJd81tL");
 
 #[program]
 pub mod loyalty_program {
@@ -55,7 +55,7 @@ pub mod loyalty_program {
             let token_metadata = DataV2 {
                 name: "Loyalty Card NFT".to_string(),
                 symbol: "BAGUETTE".to_string(),
-                uri: "https://example.com/metadata.json".to_string(),
+                uri: METADATA_COMMON.to_string(),
                 seller_fee_basis_points: 0,
                 creators: None,
                 collection: None,
@@ -88,6 +88,8 @@ pub mod loyalty_program {
             // Set the mint address in the loyalty card
             ctx.accounts.loyalty_card.mint_address = ctx.accounts.mint.key();
         } else {
+            msg!("previous_points: {}", previous_points);
+            msg!("current_points: {}", ctx.accounts.loyalty_card.loyalty_points);
             match (previous_points, ctx.accounts.loyalty_card.loyalty_points) {
                 (prev, curr) if prev >= 100 && curr < 100 => {
                     msg!("Back to level Common");
@@ -223,7 +225,7 @@ fn init_token<'info>(
             mint: mint.to_account_info(),
             mint_authority: mint.to_account_info(),
             payer: merchant.to_account_info(),
-            update_authority: mint.to_account_info(),
+            update_authority: merchant.to_account_info(),
             system_program: system_program.to_account_info(),
             rent: rent.to_account_info(),
         },
@@ -286,7 +288,7 @@ fn update_nft_uri<'info>(
         token_metadata_program.to_account_info(),
         UpdateMetadataAccountsV2 {
             metadata: metadata.to_account_info(),
-            update_authority: mint.to_account_info(),
+            update_authority: merchant_key.as_ref(),
         },
         signer,
     );
