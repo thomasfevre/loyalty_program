@@ -16,8 +16,6 @@ declare_id!("FTmY1kNRUb7j1n1dpG2V278YemS4MHUpxGYe1TNZMae5");
 
 #[program]
 pub mod loyalty_program {
-    use std::ops::Mul;
-
     use super::*;
 
     pub fn process_payment(ctx: Context<ProcessPayment>, amount: u64) -> Result<()> {
@@ -46,14 +44,14 @@ pub mod loyalty_program {
             );
         }
 
-        // // If this is a new loyalty card, initialize it
+        // If this is a new loyalty card, initialize it
         if is_new {
             ctx.accounts.loyalty_card.merchant = merchant_key;
             ctx.accounts.loyalty_card.customer = customer_key;
             ctx.accounts.loyalty_card.threshold = 100; // Example threshold value (adjust as needed)
             ctx.accounts.loyalty_card.refund_percentage = 15; // 15% refund
 
-        //     // Initialize token metadata
+            //  Initialize token metadata
             let token_metadata = DataV2 {
                 name: "Loyalty Card NFT".to_string(),
                 symbol: "BAGUETTE".to_string(),
@@ -64,7 +62,7 @@ pub mod loyalty_program {
                 uses: None,
             };
 
-        //     // Initialize and mint the token (passing individual accounts to avoid borrowing issues)
+             // Initialize and mint the token (passing individual accounts to avoid borrowing issues)
             init_token(
                 &customer_key,
                 &merchant_key,
@@ -96,7 +94,7 @@ pub mod loyalty_program {
                 ctx.accounts.loyalty_card.loyalty_points
             );
             match (previous_points, ctx.accounts.loyalty_card.loyalty_points) {
-                (prev, curr) if prev >= 100 && curr < 100 => {
+                (prev, curr) if prev >= 100 && curr > prev => {
                     msg!("Back to level Common");
                     update_nft_uri(
                         &ctx.accounts.metadata,
@@ -105,6 +103,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        &ctx.accounts.customer,
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -117,6 +116,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        &ctx.accounts.customer,
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -129,6 +129,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        &ctx.accounts.customer,
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -141,6 +142,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        &ctx.accounts.customer,
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -149,6 +151,22 @@ pub mod loyalty_program {
         }
     
         let usdc_decimals = ctx.accounts.usdc_mint.decimals as u32;
+        
+        let mut transfer_amount = amount
+            .checked_mul(10u64.pow(usdc_decimals))
+            .ok_or(ErrorCode::Overflow)?;
+
+        // if refund is available, calculate the refund amount
+        if previous_points >= ctx.accounts.loyalty_card.threshold && ctx.accounts.loyalty_card.loyalty_points > previous_points {
+            let refund_percentage = ctx.accounts.loyalty_card.refund_percentage as u64;
+            let refund_amount = amount.checked_mul(refund_percentage).ok_or(ErrorCode::Overflow)?.checked_div(100).ok_or(ErrorCode::Overflow)?;
+            msg!("Refund amount: {}", amount);
+            let final_amount = amount.checked_sub(refund_amount).ok_or(ErrorCode::Overflow)?;
+            transfer_amount =  final_amount
+            .checked_mul(10u64.pow(usdc_decimals))
+            .ok_or(ErrorCode::Overflow)?;
+        }        
+  
         let cpi_accounts = Transfer {
             from: ctx.accounts.customer_usdc_ata.to_account_info(),
             to: ctx.accounts.merchant_usdc_ata.to_account_info(),
@@ -157,7 +175,7 @@ pub mod loyalty_program {
 
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
 
-        transfer(cpi_ctx, amount.mul(10u64.pow(usdc_decimals)))?;
+        transfer(cpi_ctx, transfer_amount)?;
 
         msg!(
             "Loyalty card updated. New loyalty points: {}",
@@ -205,7 +223,7 @@ fn init_token<'info>(
             mint: mint.to_account_info(),
             mint_authority: mint.to_account_info(),
             payer: customer.to_account_info(),
-            update_authority: mint.to_account_info(),
+            update_authority: customer.to_account_info(),
             system_program: system_program.to_account_info(),
             rent: rent.to_account_info(),
         },
@@ -259,6 +277,7 @@ fn update_nft_uri<'info>(
     token_metadata_program: &Program<'info, Metaplex>,
     customer_key: &Pubkey,
     merchant_key: &Pubkey,
+    customer: &Signer<'info>,
     bump: &u8,
 ) -> Result<()> {
     let seeds = &[
@@ -273,7 +292,7 @@ fn update_nft_uri<'info>(
         token_metadata_program.to_account_info(),
         UpdateMetadataAccountsV2 {
             metadata: metadata.to_account_info(),
-            update_authority: mint.to_account_info(),
+            update_authority: customer.to_account_info(),
         },
         signer,
     );
