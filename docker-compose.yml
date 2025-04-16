@@ -1,0 +1,29 @@
+services:
+  loyaltypay:
+    container_name: loyaltypay-app
+    image: loyaltypay:latest
+    build: .
+    networks:
+      - main-internal-net
+
+  ngrok:
+    container_name: loyaltypay-ngrok
+    image: ngrok/ngrok:latest
+    ports:
+      - "4040:4040" # ngrok web interface
+    command: http loyaltypay:3000 --domain=${NGROK_URL}
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTH_TOKEN}
+    env_file:
+      - .env
+    depends_on:
+      - loyaltypay
+    networks:
+      - main-internal-net
+
+networks:
+  main-internal-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
