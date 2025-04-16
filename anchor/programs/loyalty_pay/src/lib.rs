@@ -100,6 +100,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        ctx.accounts.merchant.to_account_info(),
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -112,6 +113,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        ctx.accounts.merchant.to_account_info(),
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -124,6 +126,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        ctx.accounts.merchant.to_account_info(),
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -136,6 +139,7 @@ pub mod loyalty_program {
                         &ctx.accounts.token_metadata_program,
                         &customer_key,
                         &merchant_key,
+                        ctx.accounts.merchant.to_account_info(),
                         &ctx.bumps.mint,
                     )?;
                 }
@@ -279,6 +283,7 @@ fn update_nft_uri<'info>(
     token_metadata_program: &Program<'info, Metaplex>,
     customer_key: &Pubkey,
     merchant_key: &Pubkey,
+    merchant: AccountInfo<'info>,
     bump: &u8,
 ) -> Result<()> {
     let seeds = &[b"mint", customer_key.as_ref(), merchant_key.as_ref(), &[*bump]];
@@ -288,7 +293,7 @@ fn update_nft_uri<'info>(
         token_metadata_program.to_account_info(),
         UpdateMetadataAccountsV2 {
             metadata: metadata.to_account_info(),
-            update_authority: merchant_key.as_ref(),
+            update_authority: merchant,
         },
         signer,
     );
