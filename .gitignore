@@ -44,12 +44,9 @@ tmp
 
 
 # rust
-/rust/loyalty_program/.anchor
 /rust/loyalty_program/node_modules
-/rust/loyalty_program/target
 /rust/test-ledger
 /rust/test-ledger-archive
-/target
 
 # windsurf rules
 .windsurfrules
