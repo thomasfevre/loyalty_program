@@ -73,21 +73,15 @@ export default function CustomerAccountDetailFeature() {
       return;
     }
     try {
-      const cards = await program.account.loyaltyCard.all([
-        // {
-        //   memcmp: {
-        //     offset: 8,
-        //     bytes: address.toBase58(),
-        //   },
-        // },
-      ]);
+      const cards = await program.account.loyaltyCard.all([]);
       console.log({ cards });
 
       // Nft
       const loyaltyCards = [];
       for (const card of cards) {
-        const { mintAddress, customer } = card.account;
-
+        const { mintAddress, customer, merchant } = card.account;
+        console.log("customer: ", customer.toString());
+        console.log("merchant: ", merchant.toString());
         if (customer.toString() !== address.toString()) continue;
         if (card.publicKey) {
           const customerHasNft = await doesCustomerOwnMerchantAsset(

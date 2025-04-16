@@ -18,7 +18,7 @@ async function generateProcessPaymentTx(
 ) {
     try {
         console.log(`Generating transaction: Account=${account}, Merchant=${merchantAddress}, Amount=${amount}`);
-
+        console.log(`ProgramID : ${LOYALTY_PAY_PROGRAM_ID}`);
         // Create a customer public key from the account string
         const customerPubkey = new PublicKey(account);
         const merchantPubkey = new PublicKey(merchantAddress);

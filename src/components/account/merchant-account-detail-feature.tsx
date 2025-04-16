@@ -90,18 +90,11 @@ export default function MerchantAccountDetailFeature() {
       setIsGenerating(true);
       setStatus("Generating QR code...");
 
-      const { decimals } = await getMint(
-        connection,
-        new PublicKey(USDC_MINT_ADDRESS)
-      );
-
-      const formattedAmount = amount * 10 ** decimals;
-
       // Create a URL for our dynamic api endpoint with merchant and amount in path
       const apiUrl = new URL(
         `${
           window.location.origin
-        }/api/pay/${wallet.publicKey.toString()}/${formattedAmount}`
+        }/api/pay/${wallet.publicKey.toString()}/${amount}`
       );
 
       // Generate reference to track this payment
