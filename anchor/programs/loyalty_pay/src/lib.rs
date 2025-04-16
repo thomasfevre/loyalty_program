@@ -12,7 +12,7 @@ use anchor_spl::{
     token_interface::Mint,
 };
 
-declare_id!("FTmY1kNRUb7j1n1dpG2V278YemS4MHUpxGYe1TNZMae5");
+declare_id!("24rAgLg6RkxhkrS6rp9N7cTZC1GJuembSxha5gJd81tL");
 
 #[program]
 pub mod loyalty_program {

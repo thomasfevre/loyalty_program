@@ -97,9 +97,7 @@ export default function MerchantAccountDetailFeature() {
         }/api/pay/${wallet.publicKey.toString()}/${amount}`
       );
 
-      // Generate reference to track this payment
-      const reference = new PublicKey(Keypair.generate().publicKey);
-      setReference(reference);
+      console.log("api url: ", apiUrl.toString());
 
       // Create the Solana Pay URL that will trigger the wallet to make a GET
       // request to our API endpoint
