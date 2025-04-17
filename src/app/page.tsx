@@ -1,5 +1,5 @@
-import DashboardFeature from '@/components/dashboard/dashboard-feature'
+import LoyaltyPayHome from '@/components/home/loyalty-pay-home'
 
 export default function Page() {
-  return <DashboardFeature />
+  return <LoyaltyPayHome />
 }

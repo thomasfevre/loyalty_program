@@ -268,39 +268,47 @@ function BalanceSol({ balance }: { balance: number }) {
 }
 
 function ModalReceive({ hide, show, address }: { hide: () => void; show: boolean; address: PublicKey }) {
-  return (
-    <AppModal title="Receive" hide={hide} show={show}>
+  return show ? (
+    <AppModal id="receive-modal" title="Receive" closeModal={hide}>
       <p>Receive assets by sending them to your public key:</p>
       <code>{address.toString()}</code>
     </AppModal>
-  )
+  ) : null
 }
 
 function ModalAirdrop({ hide, show, address }: { hide: () => void; show: boolean; address: PublicKey }) {
   const mutation = useRequestAirdrop({ address })
   const [amount, setAmount] = useState('2')
 
-  return (
+  return show ? (
     <AppModal
-      hide={hide}
-      show={show}
+      id="airdrop-modal"
       title="Airdrop"
-      submitDisabled={!amount || mutation.isPending}
-      submitLabel="Request Airdrop"
-      submit={() => mutation.mutateAsync(parseFloat(amount)).then(() => hide())}
+      closeModal={hide}
     >
-      <input
-        disabled={mutation.isPending}
-        type="number"
-        step="any"
-        min="1"
-        placeholder="Amount"
-        className="input input-bordered w-full"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-      />
+      <div>
+        <input
+          disabled={mutation.isPending}
+          type="number"
+          step="any"
+          min="1"
+          placeholder="Amount"
+          className="input input-bordered w-full"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <div className="mt-4">
+          <button 
+            className="btn btn-primary"
+            disabled={!amount || mutation.isPending}
+            onClick={() => mutation.mutateAsync(parseFloat(amount)).then(() => hide())}
+          >
+            Request Airdrop
+          </button>
+        </div>
+      </div>
     </AppModal>
-  )
+  ) : null
 }
 
 function ModalSend({ hide, show, address }: { hide: () => void; show: boolean; address: PublicKey }) {
@@ -313,40 +321,48 @@ function ModalSend({ hide, show, address }: { hide: () => void; show: boolean; a
     return <div>Wallet not connected</div>
   }
 
-  return (
+  return show ? (
     <AppModal
-      hide={hide}
-      show={show}
+      id="send-modal"
       title="Send"
-      submitDisabled={!destination || !amount || mutation.isPending}
-      submitLabel="Send"
-      submit={() => {
-        mutation
-          .mutateAsync({
-            destination: new PublicKey(destination),
-            amount: parseFloat(amount),
-          })
-          .then(() => hide())
-      }}
+      closeModal={hide}
     >
-      <input
-        disabled={mutation.isPending}
-        type="text"
-        placeholder="Destination"
-        className="input input-bordered w-full"
-        value={destination}
-        onChange={(e) => setDestination(e.target.value)}
-      />
-      <input
-        disabled={mutation.isPending}
-        type="number"
-        step="any"
-        min="1"
-        placeholder="Amount"
-        className="input input-bordered w-full"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-      />
+      <div>
+        <input
+          disabled={mutation.isPending}
+          type="text"
+          placeholder="Destination"
+          className="input input-bordered w-full mb-2"
+          value={destination}
+          onChange={(e) => setDestination(e.target.value)}
+        />
+        <input
+          disabled={mutation.isPending}
+          type="number"
+          step="any"
+          min="1"
+          placeholder="Amount"
+          className="input input-bordered w-full"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <div className="mt-4">
+          <button 
+            className="btn btn-primary"
+            disabled={!destination || !amount || mutation.isPending}
+            onClick={() => {
+              mutation
+                .mutateAsync({
+                  destination: new PublicKey(destination),
+                  amount: parseFloat(amount),
+                })
+                .then(() => hide())
+            }}
+          >
+            Send
+          </button>
+        </div>
+      </div>
     </AppModal>
-  )
+  ) : null
 }

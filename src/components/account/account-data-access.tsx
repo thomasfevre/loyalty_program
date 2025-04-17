@@ -86,7 +86,7 @@ export function useTransferSol({ address }: { address: PublicKey }) {
     },
     onSuccess: (signature) => {
       if (signature) {
-        transactionToast(signature)
+        transactionToast.onSuccess(signature)
       }
       return Promise.all([
         client.invalidateQueries({
@@ -120,7 +120,7 @@ export function useRequestAirdrop({ address }: { address: PublicKey }) {
       return signature
     },
     onSuccess: (signature) => {
-      transactionToast(signature)
+      transactionToast.onSuccess(signature)
       return Promise.all([
         client.invalidateQueries({
           queryKey: ['get-balance', { endpoint: connection.rpcEndpoint, address }],

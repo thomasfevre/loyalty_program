@@ -5,7 +5,7 @@ import {
   publicKey as umiPublicKey,
 } from "@metaplex-foundation/umi";
 import { PublicKey } from "@solana/web3.js";
-import { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 
 import { useParams } from "next/navigation";
@@ -19,7 +19,7 @@ import {
   AccountTokens,
   AccountTransactions,
 } from "./account-ui";
-import toast from "react-hot-toast";
+import { toast } from "../ui/custom-toast";
 import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
 import { deriveLoyaltyPDA } from "../LoyaltyPay/accountUtils/getPDAs";
 import {
@@ -28,7 +28,7 @@ import {
 } from "../metaplex/utils";
 import axios from "axios";
 import Image from "next/image";
-import { BN, getProvider } from "@coral-xyz/anchor";
+import { BN } from "@coral-xyz/anchor";
 
 export default function CustomerAccountDetailFeature() {
   const [loyaltyCards, setLoyaltyCards] = useState<
@@ -44,7 +44,7 @@ export default function CustomerAccountDetailFeature() {
   >([]);
   const params = useParams();
   const { cluster } = useCluster();
-  const { program } = useLoyaltyPayProgram();
+  const { program, closeLoyaltyCard } = useLoyaltyPayProgram();
   const { connected } = useWallet();
   const wallet = useAnchorWallet();
 
@@ -63,9 +63,6 @@ export default function CustomerAccountDetailFeature() {
       console.log(`Invalid public key`, e);
     }
   }, [params, connected]);
-  if (!address) {
-    return <div>Error loading account</div>;
-  }
 
   const fetchLoyaltyCard = async () => {
     if (!address) {
@@ -137,57 +134,79 @@ export default function CustomerAccountDetailFeature() {
     }
   };
 
-  const closeLoyaltyCard = async (merchantPubKey: PublicKey) => {
-    if (!address) {
-      toast.error("Connect your wallet first.");
-      return;
-    }
-    try {
-      const loyaltyPDA = deriveLoyaltyPDA(
-        address,
-        new PublicKey(merchantPubKey),
-        cluster.network as Cluster
-      );
-      await program.methods
-        .closeLoyaltyCard()
-        .accounts({ loyaltyCard: loyaltyPDA, address, merchantPubKey })
-        .rpc();
-      toast.success("Loyalty card closed successfully!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to close loyalty card.");
-    }
-  };
+  useEffect(() => {
+    fetchLoyaltyCard();
+  }, [address]);
+
+  if (!address) {
+    return <div>Error loading account</div>;
+  }
 
   return (
-    <div>
+    <div className="space-y-8">
       <AppHero
-        title={<></>}
+        title={
+          <span className="text-3xl font-bold text-white">
+            Customer Dashboard
+          </span>
+        }
         subtitle={
-          <div className="bg-green-500 width-fit shadow-md rounded-lg p-6 mb-6">
-            <p className="text-lg font-semibold mb-4">Customer Wallet:</p>
-            <div className="my-4">
-              <ExplorerLink
-                path={`account/${address}`}
-                label={ellipsify(address.toString())}
-              />
+          <div className="bg-gradient-to-r from-indigo-600/90 to-indigo-700/90 rounded-lg p-6 mt-4 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <p className="text-lg font-semibold mb-2 text-indigo-100">
+                Your Wallet:
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="bg-white/20 rounded-md px-3 py-1">
+                  <ExplorerLink
+                    path={`account/${address}`}
+                    label={ellipsify(address.toString())}
+                    className="text-white hover:text-indigo-200 transition-colors"
+                  />
+                </div>
+                <button
+                  onClick={() =>
+                    navigator.clipboard.writeText(address.toString())
+                  }
+                  className="text-indigo-200 hover:text-white"
+                  title="Copy to clipboard"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+            <div>
+              <AccountButtons address={address} />
             </div>
           </div>
         }
-      >
-        <div className="my-4">
-          <AccountButtons address={address} />
+        size="lg"
+      />
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Your Loyalty Cards</h2>
+          <button
+            onClick={fetchLoyaltyCard}
+            className="mt-4 md:mt-0 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-6 py-2 rounded-md shadow-md transition-all flex items-center gap-2"
+          >
+            <span>🔄</span>
+            <span>Fetch Loyalty Cards</span>
+          </button>
         </div>
-      </AppHero>
-      <div className="space-y-8">
-        <div className="">
-          <div className="flex flex-col items-center mt-4">
-            <button
-              onClick={fetchLoyaltyCard}
-              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-            >
-              Fetch Loyalty Cards
-            </button>
+
+        {loyaltyCards.length === 0 ? (
+          <div className="text-center py-12 bg-indigo-50 dark:bg-gray-700/20 rounded-lg">
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              You don&apos;t have any loyalty cards yet.
+            </p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              Make purchases with merchants that use LoyaltyPay to earn loyalty
+              rewards.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-8">
             {loyaltyCards.map(
               ({
                 nftMetadata: nft,
@@ -199,58 +218,135 @@ export default function CustomerAccountDetailFeature() {
                 threshold,
               }) => (
                 <div
-                  className="mt-8 bg-blue-500 shadow-md rounded-lg p-6 relative"
+                  className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg overflow-hidden relative"
                   key={merchant.toString()}
                 >
-                  <button
-                    onClick={() => closeLoyaltyCard(merchant)}
-                    className="absolute top-2 right-2 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-                  >
-                    Close Loyalty Card
-                  </button>
-                  <div>
-                    <h1 className="text-2xl font-semibold mb-4">
-                      Loyalty Card Details
-                    </h1>
-                    <p className="text-lg">Merchant: {merchant.toString()}</p>
-                    <p className="text-lg">Customer: {customer.toString()}</p>
-                    <p className="text-lg">
-                      Loyalty Points: {loyaltyPoints.toString()}
-                    </p>
-                    <p className="text-lg">Threshold: {threshold.toString()}</p>
-                    <p className="text-lg">
-                      Refund Percentage: {refundPercentage.toString()}%
-                    </p>
-                    <p className="text-lg">
-                      Mint Address: {mintAddress.toString()}
-                    </p>
+                  <div className="absolute top-0 right-0 p-4">
+                    <button
+                      onClick={() =>
+                        closeLoyaltyCard.mutate({ customer, merchant })
+                      }
+                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-all flex items-center gap-1"
+                    >
+                      <span>Close Card</span>
+                    </button>
                   </div>
-                  <div className="mt-8 flex flex-col items-center">
-                    <h1 className="text-2xl font-semibold mb-4">NFT Details</h1>
-                    <p className="text-lg">
-                      Name: <strong>{nft.name}</strong>
-                    </p>
-                    <p className="text-lg">Symbol: {nft.symbol}</p>
-                    <p className="text-lg">
-                      Current Reward Level:{" "}
-                      <strong>{nft.attributes[0].value}</strong>
-                    </p>
-                    <Image
-                      src={nft.image}
-                      width={500}
-                      height={500}
-                      alt="NFT"
-                      className="w-48 h-auto mt-4 rounded-md shadow-md"
-                    />
+
+                  <div className="p-6 flex flex-col md:flex-row gap-8">
+                    <div className="md:w-1/3 flex flex-col items-center justify-center">
+                      <div className="relative">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-30"></div>
+                        <Image
+                          src={nft.image}
+                          width={500}
+                          height={500}
+                          alt="NFT"
+                          className="relative w-64 h-auto rounded-xl shadow-xl"
+                        />
+                      </div>
+                      <div className="mt-4 text-center">
+                        <p className="text-xl font-bold text-indigo-800 dark:text-indigo-300">
+                          {nft.name}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {nft.symbol}
+                        </p>
+                        <div className="mt-2 inline-block bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1 rounded-full">
+                          <p className="text-indigo-800 dark:text-indigo-300 font-medium">
+                            Level:{" "}
+                            <span className="font-bold">
+                              {nft.attributes[0].value}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:w-2/3">
+                      <h2 className="text-2xl font-bold mb-4 text-indigo-800 dark:text-indigo-300">
+                        Loyalty Card Details
+                      </h2>
+
+                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Merchant
+                            </p>
+                            <p className="font-mono text-sm">
+                              <ExplorerLink
+                                path={`account/${merchant.toString()}`}
+                                label={ellipsify(merchant.toString(), 8, 8)}
+                              />
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Mint Address
+                            </p>
+                            <p className="font-mono text-sm">
+                              <ExplorerLink
+                                path={`account/${mintAddress.toString()}`}
+                                label={ellipsify(mintAddress.toString(), 8, 8)}
+                              />
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Loyalty Points
+                          </p>
+                          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                            {loyaltyPoints.toString()}
+                          </p>
+                        </div>
+                        <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Threshold
+                          </p>
+                          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                            {threshold.toString()}
+                          </p>
+                        </div>
+                        <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Refund Percentage
+                          </p>
+                          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                            {refundPercentage.toString()}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 bg-indigo-100 dark:bg-indigo-900/30 p-4 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">💡</span>
+                          <p className="text-sm text-indigo-800 dark:text-indigo-300">
+                            Make {threshold.sub(loyaltyPoints).toString()} more
+                            purchases to reach your next reward!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )
             )}
           </div>
+        )}
+      </div>
+
+      <div className="space-y-8">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <AccountTokens address={address} />
         </div>
 
-        <AccountTokens address={address} />
-        <AccountTransactions address={address} />
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <AccountTransactions address={address} />
+        </div>
       </div>
     </div>
   );
