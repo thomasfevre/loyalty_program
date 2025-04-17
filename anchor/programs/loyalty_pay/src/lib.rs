@@ -329,7 +329,7 @@ pub struct ProcessPayment<'info> {
     pub loyalty_card: Account<'info, LoyaltyCard>,
 
     #[account()]
-    pub merchant: SystemAccount<'info>,
+    pub merchant: UncheckedAccount<'info>,
 
     #[account(mut, signer)]
     pub customer: Signer<'info>,
