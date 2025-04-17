@@ -49,7 +49,7 @@ export const waitForPayment = async (
       });
       console.log("Payment detected:", signatureInfo);
       console.log({ amount });
-
+      return;
       // Get the right reference array from the transaction
       const referenceArray = await handlePaymentReferences(
         connection,
@@ -64,7 +64,7 @@ export const waitForPayment = async (
         {
           recipient: merchantPubKey,
           amount: new BigNumber(amount),
-          reference: referenceArray,
+          reference,
           splToken: USDC_MINT_ADDRESS,
         }
       );
@@ -124,18 +124,13 @@ const handlePaymentReferences = async (
 };
 
 export const generateSolanaPayURL = (
+  link: URL,
   merchant: PublicKey,
-  amount: number,
   reference: PublicKey
 ) => {
-  const usdcMint = new PublicKey(
-    "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
-  );
-
   return encodeURL({
+    link,
     recipient: merchant,
-    amount: new BigNumber(amount),
-    splToken: usdcMint,
     reference,
     label: "My Shop",
     message: "Thanks for your purchase!",

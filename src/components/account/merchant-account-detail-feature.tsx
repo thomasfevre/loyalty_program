@@ -2,21 +2,18 @@
 
 import { useMemo, useState, useEffect } from "react";
 
-import { useCluster } from "../cluster/cluster-data-access";
 import { ExplorerLink } from "../cluster/cluster-ui";
 import { AppHero, ellipsify } from "../ui/ui-layout";
 import { AccountButtons } from "./account-ui";
-import {
-  useAnchorWallet,
-  useConnection,
-  useWallet,
-} from "@solana/wallet-adapter-react";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { useParams, useRouter } from "next/navigation";
-import { QRCodeSVG } from "qrcode.react";
-import toast from "react-hot-toast";
-import { useLoyaltyPayProgram } from "../LoyaltyPay/LoyaltyPay-data-access";
+import { toast } from "../ui/custom-toast";
 import { createQR, encodeURL } from "@solana/pay";
+import {
+  generateSolanaPayURL,
+  waitForPayment,
+} from "../LoyaltyPay/accountUtils/getPDAs";
 import { getMint } from "@solana/spl-token";
 import { USDC_MINT_ADDRESS } from "@project/anchor";
 
@@ -90,22 +87,21 @@ export default function MerchantAccountDetailFeature() {
       setIsGenerating(true);
       setStatus("Generating QR code...");
 
+      const referenceKey = new PublicKey(Keypair.generate().publicKey); // Unique reference
+      setReference(referenceKey);
+
       // Create a URL for our dynamic api endpoint with merchant and amount in path
       const apiUrl = new URL(
         `${
           window.location.origin
-        }/api/pay/${wallet.publicKey.toString()}/${amount}`
+        }/api/pay/${wallet.publicKey.toString()}/${amount}/${referenceKey.toString()}`
       );
 
       console.log("api url: ", apiUrl.toString());
 
       // Create the Solana Pay URL that will trigger the wallet to make a GET
       // request to our API endpoint
-      const url = encodeURL({
-        link: apiUrl,
-        label: "Loyalty Pay",
-        message: "Process payment and update loyalty card",
-      });
+      const url = generateSolanaPayURL(apiUrl, wallet.publicKey, referenceKey);
 
       // Create a QR code from the URL
       const qr = createQR(url.toString());
@@ -133,6 +129,32 @@ export default function MerchantAccountDetailFeature() {
     }
   };
 
+  useEffect(() => {
+    console.log("reference: ", reference);
+    console.log("wallet: ", wallet);
+    if (!reference || !wallet) return;
+
+    (async () => {
+      try {
+        const { decimals } = await getMint(connection, USDC_MINT_ADDRESS);
+
+        console.log("status: ", status);
+        if (status === "Scan the QR Code to pay.") {
+          await waitForPayment(
+            reference,
+            connection,
+            wallet.publicKey,
+            amount * 10 ** decimals
+          );
+          toast.success("Payment received! Updating loyalty points...");
+          setStatus("Payment received! Updating blockchain...");
+        }
+      } catch (error) {
+        toast.error("Error detecting payment");
+      }
+    })();
+  }, [reference, connection, amount, status]);
+
   if (!address) {
     return (
       <div className="flex flex-col items-center justify-center p-6">
@@ -159,64 +181,151 @@ export default function MerchantAccountDetailFeature() {
     );
   }
   return (
-    <div>
+    <div className="space-y-8">
       <AppHero
-        title={<></>}
+        title={
+          <span className="text-3xl font-bold text-white">
+            Merchant Dashboard
+          </span>
+        }
         subtitle={
-          <div className="bg-blue-500 width-fit shadow-md rounded-lg p-6 mb-6">
-            <p className="text-lg font-semibold mb-4">Merchant Wallet:</p>
-            <div className="my-4">
-              <ExplorerLink
-                path={`account/${address}`}
-                label={ellipsify(address.toString())}
-              />
+          <div className="bg-gradient-to-r from-purple-600/90 to-purple-700/90 rounded-lg p-6 mt-4 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <p className="text-lg font-semibold mb-2 text-purple-100">
+                Merchant Wallet:
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="bg-white/20 rounded-md px-3 py-1">
+                  <ExplorerLink
+                    path={`account/${address}`}
+                    label={ellipsify(address.toString())}
+                    className="text-white hover:text-purple-200 transition-colors"
+                  />
+                </div>
+                <button
+                  onClick={() =>
+                    navigator.clipboard.writeText(address.toString())
+                  }
+                  className="text-purple-200 hover:text-white"
+                  title="Copy to clipboard"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+            <div>
+              <AccountButtons address={address} />
             </div>
           </div>
         }
-      >
-        <div className="my-4">
-          <AccountButtons address={address} />
+        size="lg"
+      />
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-300">
+            Payment Generator
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300">
+            Generate QR codes for customers to make payments
+          </p>
         </div>
-      </AppHero>
-      <div className="flex justify-center">
-        <div className="">
-          {wallet?.publicKey ? (
-            <>
-              <div className="my-4">
-                <p className="text-lg mb-2">{status}</p>
-                <label className="block text-sm font-medium  mb-1">
-                  Amount (USDC):
-                </label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  className="w-fit px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+
+        <div className="flex flex-col md:flex-row gap-8">
+          <div className="md:w-1/2 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-6 rounded-lg">
+            <div className="mb-6">
+              <p className="text-lg font-medium text-purple-800 dark:text-purple-300 mb-2">
+                {status}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Amount (USDC):
+                  </label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white"
+                    disabled={isGenerating}
+                  />
+                </div>
+                <button
+                  onClick={generateTransactionQR}
+                  className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-md shadow-md hover:shadow-lg transition-all flex justify-center items-center gap-2 disabled:from-gray-400 disabled:to-gray-500"
                   disabled={isGenerating}
-                />
+                >
+                  {isGenerating ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <span>✨</span>
+                      <span>Generate Payment QR</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                onClick={generateTransactionQR}
-                className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:bg-gray-400"
-                disabled={isGenerating}
-              >
-                {isGenerating ? "Generating..." : "Generate Payment QR"}
-              </button>
-              {qrCode && (
-                <div className="mt-6">
+            </div>
+          </div>
+
+          <div className="md:w-1/2 flex flex-col items-center justify-center">
+            {qrCode ? (
+              <div className="relative bg-white p-4 rounded-lg shadow-lg">
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl blur opacity-20"></div>
+                <div className="relative">
                   <img
                     src={qrCode}
                     width="256"
                     height="256"
                     alt="QR Code"
-                    className="mx-auto"
+                    className="mx-auto rounded-md"
                   />
+                  {status === "Payment received! Updating blockchain..." && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/40 rounded-md">
+                      <div className="bg-green-500 rounded-full w-24 h-24 flex items-center justify-center shadow-lg border-4 border-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Customer payment - {amount} USDC
+                  </p>
                 </div>
-              )}
-            </>
-          ) : (
-            <p className="text-lg ">Please connect your wallet.</p>
-          )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 bg-gray-100 dark:bg-gray-700/50 rounded-lg w-full">
+                <div className="text-6xl mb-4">📱</div>
+                <p className="text-gray-500 dark:text-gray-400 text-center">
+                  Generate a QR code for customers to <br />
+                  make payments with Solana Pay
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

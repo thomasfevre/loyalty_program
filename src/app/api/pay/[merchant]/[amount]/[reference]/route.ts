@@ -14,7 +14,8 @@ const icon = 'https://solana.com/src/img/branding/solanaLogoMark.svg';
 async function generateProcessPaymentTx(
     account: string,
     merchantAddress: string,
-    amount: number
+    amount: number,
+    reference: string
 ) {
     try {
         console.log(`Generating transaction: Account=${account}, Merchant=${merchantAddress}, Amount=${amount}`);
@@ -46,7 +47,11 @@ async function generateProcessPaymentTx(
         // Create and configure the transaction
         const tx = new Transaction();
         const processPaymentIx = new TransactionInstruction(ix);
-
+        processPaymentIx.keys.push({
+            pubkey: new PublicKey(reference),
+            isSigner: false,
+            isWritable: false
+        });
         // Set transaction properties
         const latestBlockhash = await connection.getLatestBlockhash();
         tx.feePayer = customerPubkey;
@@ -70,19 +75,8 @@ async function generateProcessPaymentTx(
 }
 
 // GET handler for initial wallet display
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { merchant: string, amount: string } }
-) {
+export async function GET(request: NextRequest,) {
     try {
-        // Access params after awaiting the context
-        const param = await params;
-        const { merchant, amount } = param;
-        const merchantAddress = merchant;
-        const amountStr = amount;
-
-        console.log(`GET request received for merchant: ${merchantAddress}, amount: ${amountStr}`);
-
         // Just return basic info, the wallet will make a POST request with the account
         return NextResponse.json({
             label,
@@ -101,12 +95,12 @@ export async function GET(
 // POST handler for transaction generation after wallet approval
 export async function POST(
     request: NextRequest,
-    { params }: { params: { merchant: string, amount: string } }
+    { params }: { params: Promise<{ merchant: string, amount: string, reference: string }> }
 ) {
     try {
         // Access params after awaiting the context
         const param = await params;
-        const { merchant, amount } = param;
+        const { merchant, amount, reference } = param;
         const merchantAddress = merchant;
         const amountStr = amount;
 
@@ -141,7 +135,7 @@ export async function POST(
         }
 
         // Generate the transaction
-        const transaction = await generateProcessPaymentTx(account, merchantAddress, parseFloat(amountStr));
+        const transaction = await generateProcessPaymentTx(account, merchantAddress, parseFloat(amountStr), reference);
 
         // Return the transaction to the wallet
         return NextResponse.json({

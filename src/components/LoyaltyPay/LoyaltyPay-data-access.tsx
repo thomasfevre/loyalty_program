@@ -5,17 +5,17 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { Cluster, Keypair, PublicKey } from "@solana/web3.js";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import toast from "react-hot-toast";
 import { useCluster } from "../cluster/cluster-data-access";
 import { useAnchorProvider } from "../solana/solana-provider";
 import { useTransactionToast } from "../ui/ui-layout";
 import { BN } from "bn.js";
+import { toast } from "../ui/custom-toast";
 
 export function useLoyaltyPayProgram() {
   const { connection } = useConnection();
   const { cluster } = useCluster();
-  const transactionToast = useTransactionToast();
   const provider = useAnchorProvider();
+  const transactionToast = useTransactionToast();
   const programId = useMemo(
     () => getLoyaltyPayProgramId(cluster.network as Cluster),
     [cluster]
@@ -35,28 +35,6 @@ export function useLoyaltyPayProgram() {
     queryFn: () => connection.getParsedAccountInfo(programId),
   });
 
-  const processPayment = useMutation({
-    mutationKey: ["LoyaltyPay", "process-payment", { cluster }],
-    mutationFn: async ({
-      amount,
-      customer,
-      merchant,
-    }: {
-      amount: number;
-      customer: PublicKey;
-      merchant: PublicKey;
-    }) =>
-      program.methods
-        .processPayment(new BN(amount))
-        .accounts({ customer, merchant })
-        .rpc(),
-    onSuccess: (signature) => {
-      transactionToast(signature);
-      return accounts.refetch();
-    },
-    onError: () => toast.error("Failed to process payment"),
-  });
-
   const closeLoyaltyCard = useMutation({
     mutationKey: ["LoyaltyPay", "close_loyalty_card", { cluster }],
     mutationFn: async ({
@@ -66,15 +44,26 @@ export function useLoyaltyPayProgram() {
       customer: PublicKey;
       merchant: PublicKey;
     }) =>
-      program.methods
-        .closeLoyaltyCard()
-        .accounts({ customer, merchant })
-        .rpc(),
+      program.methods.closeLoyaltyCard().accounts({ customer, merchant }).rpc(),
     onSuccess: (signature) => {
-      transactionToast(signature);
+      transactionToast.onSuccess(signature);
+      toast.success(
+        <div>
+          <p className="font-medium">Loyalty card closed successfully!</p>
+          <p className="text-sm">Your loyalty card has been removed from the blockchain</p>
+        </div>
+      );
       return accounts.refetch();
     },
-    onError: () => toast.error("Failed to close account"),
+    onError: (error) => {
+      console.error("Error closing loyalty card:", error);
+      toast.error(
+        <div>
+          <p className="font-medium">Failed to close loyalty card</p>
+          <p className="text-sm">{error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      );
+    },
   });
 
   return {
@@ -82,7 +71,7 @@ export function useLoyaltyPayProgram() {
     programId,
     accounts,
     getProgramAccount,
-    processPayment,
+    closeLoyaltyCard,
   };
 }
 
