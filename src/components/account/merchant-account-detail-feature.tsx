@@ -302,6 +302,15 @@ export default function MerchantAccountDetailFeature() {
                     alt="QR Code"
                     className="mx-auto rounded-md"
                   />
+                  {status === "Payment received! Updating blockchain..." && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/40 rounded-md">
+                      <div className="bg-green-500 rounded-full w-24 h-24 flex items-center justify-center shadow-lg border-4 border-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
                     Customer payment - {amount} USDC
                   </p>
