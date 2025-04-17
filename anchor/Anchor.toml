@@ -5,8 +5,8 @@ anchor_version = "0.31.0"
 resolution = true
 skip-lint = true
 
-[programs.localnet]
-LoyaltyProgram = "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47"
+[programs.devnet]
+LoyaltyProgram = "24rAgLg6RkxhkrS6rp9N7cTZC1GJuembSxha5gJd81tL"
 
 [registry]
 url = "https://api.apr.dev"

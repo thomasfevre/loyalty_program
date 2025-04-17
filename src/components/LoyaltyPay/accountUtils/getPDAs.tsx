@@ -2,6 +2,7 @@
 
 import { getLoyaltyPayProgramId, USDC_MINT_ADDRESS } from "@project/anchor";
 import {
+  createQR,
   encodeURL,
   findReference,
   validateTransfer,

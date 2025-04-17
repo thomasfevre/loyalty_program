@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/loyalty_program.json`.
  */
 export type LoyaltyProgram = {
-  "address": "7YXA7HHr9UGXYA3cFC72s9ZUVbHDJbUojGz6puNrDu47",
+  "address": "24rAgLg6RkxhkrS6rp9N7cTZC1GJuembSxha5gJd81tL",
   "metadata": {
     "name": "loyaltyProgram",
     "version": "0.1.0",
@@ -67,10 +67,13 @@ export type LoyaltyProgram = {
         },
         {
           "name": "merchant",
-          "writable": true,
           "relations": [
             "loyaltyCard"
           ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -117,11 +120,10 @@ export type LoyaltyProgram = {
           }
         },
         {
-          "name": "customer",
-          "writable": true
+          "name": "merchant"
         },
         {
-          "name": "merchant",
+          "name": "customer",
           "writable": true,
           "signer": true
         },
@@ -172,41 +174,8 @@ export type LoyaltyProgram = {
                 ]
               },
               {
-                "kind": "const",
-                "value": [
-                  233,
-                  40,
-                  57,
-                  85,
-                  9,
-                  101,
-                  255,
-                  212,
-                  214,
-                  74,
-                  202,
-                  175,
-                  70,
-                  212,
-                  93,
-                  247,
-                  49,
-                  142,
-                  91,
-                  79,
-                  87,
-                  201,
-                  12,
-                  72,
-                  125,
-                  96,
-                  98,
-                  93,
-                  130,
-                  155,
-                  131,
-                  123
-                ]
+                "kind": "account",
+                "path": "usdcMint"
               }
             ],
             "program": {
@@ -295,41 +264,8 @@ export type LoyaltyProgram = {
                 ]
               },
               {
-                "kind": "const",
-                "value": [
-                  233,
-                  40,
-                  57,
-                  85,
-                  9,
-                  101,
-                  255,
-                  212,
-                  214,
-                  74,
-                  202,
-                  175,
-                  70,
-                  212,
-                  93,
-                  247,
-                  49,
-                  142,
-                  91,
-                  79,
-                  87,
-                  201,
-                  12,
-                  72,
-                  125,
-                  96,
-                  98,
-                  93,
-                  130,
-                  155,
-                  131,
-                  123
-                ]
+                "kind": "account",
+                "path": "usdcMint"
               }
             ],
             "program": {
@@ -372,9 +308,156 @@ export type LoyaltyProgram = {
           }
         },
         {
-          "name": "usdcAccount",
-          "writable": true,
+          "name": "usdcMint",
           "address": "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
+        },
+        {
+          "name": "mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "metadata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMetadataProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "tokenMetadataProgram"
+            }
+          }
+        },
+        {
+          "name": "tokenDestination",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "customer"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         },
         {
           "name": "tokenProgram",
@@ -383,16 +466,24 @@ export type LoyaltyProgram = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "tokenMetadataProgram",
+          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
         }
       ],
       "args": [
         {
           "name": "amount",
           "type": "u64"
-        },
-        {
-          "name": "mintAddress",
-          "type": "pubkey"
         }
       ]
     }
