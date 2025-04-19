@@ -51,39 +51,50 @@ pub mod loyalty_program {
             ctx.accounts.loyalty_card.threshold = 100; // Example threshold value (adjust as needed)
             ctx.accounts.loyalty_card.refund_percentage = 15; // 15% refund
 
-            //  Initialize token metadata
-            let token_metadata = DataV2 {
-                name: "Loyalty Card NFT".to_string(),
-                symbol: "BAGUETTE".to_string(),
-                uri: METADATA_COMMON.to_string(),
-                seller_fee_basis_points: 0,
-                creators: None,
-                collection: None,
-                uses: None,
-            };
+            // check if &ctx.accounts.token_destination exists and token balance > 0
+            let token_account = &ctx.accounts.token_destination;
+            if token_account.amount == 0 {
+                
+                let metadata_account = &ctx.accounts.metadata;
+                if metadata_account.lamports() == 0 {
+                    //  Initialize token metadata
+                    let token_metadata = DataV2 {
+                        name: "Loyalty Card NFT - COMMON".to_string(),
+                        symbol: "BAGUETTE".to_string(),
+                        uri: METADATA_COMMON.to_string(),
+                        seller_fee_basis_points: 0,
+                        creators: None,
+                        collection: None,
+                        uses: None,
+                    };
 
-             // Initialize and mint the token (passing individual accounts to avoid borrowing issues)
-            init_token(
-                &customer_key,
-                &merchant_key,
-                &ctx.accounts.metadata,
-                &ctx.accounts.mint,
-                &ctx.accounts.customer,
-                &ctx.accounts.system_program,
-                &ctx.accounts.token_metadata_program,
-                &ctx.accounts.rent,
-                &ctx.bumps.mint,
-                token_metadata,
-            )?;
+                    // Initialize and mint the token (passing individual accounts to avoid borrowing issues)
+                    init_token(
+                        &customer_key,
+                        &merchant_key,
+                        &ctx.accounts.metadata,
+                        &ctx.accounts.mint,
+                        &ctx.accounts.customer,
+                        &ctx.accounts.system_program,
+                        &ctx.accounts.token_metadata_program,
+                        &ctx.accounts.rent,
+                        &ctx.bumps.mint,
+                        token_metadata,
+                    )?;
+                }
 
-            mint_loyalty_token(
-                &customer_key,
-                &merchant_key,
-                &ctx.accounts.mint,
-                &ctx.accounts.token_destination,
-                &ctx.accounts.token_program,
-                &ctx.bumps.mint,
-            )?;
+                mint_loyalty_token(
+                    &customer_key,
+                    &ctx.accounts.customer,
+                    &merchant_key,
+                    &ctx.accounts.mint,
+                    &ctx.accounts.token_destination,
+                    &ctx.accounts.token_program,
+                    &ctx.bumps.mint,
+                )?;
+            }
+           
+           
 
             // Set the mint address in the loyalty card
             ctx.accounts.loyalty_card.mint_address = ctx.accounts.mint.key();
@@ -159,14 +170,23 @@ pub mod loyalty_program {
         // if refund is available, calculate the refund amount
         if previous_points >= ctx.accounts.loyalty_card.threshold && ctx.accounts.loyalty_card.loyalty_points > previous_points {
             let refund_percentage = ctx.accounts.loyalty_card.refund_percentage as u64;
-            let refund_amount = amount.checked_mul(refund_percentage).ok_or(ErrorCode::Overflow)?.checked_div(100).ok_or(ErrorCode::Overflow)?;
+            let amountInDecimals = amount.checked_mul(10u64.pow(usdc_decimals)).ok_or(ErrorCode::Overflow)?;
+            msg!("Amount in decimals: {}", amountInDecimals);
+            let refund_amount = amountInDecimals.checked_mul(refund_percentage).ok_or(ErrorCode::Overflow)?.checked_div(100).ok_or(ErrorCode::Overflow)?;
             msg!("Refund amount: {}", amount);
-            let final_amount = amount.checked_sub(refund_amount).ok_or(ErrorCode::Overflow)?;
-            transfer_amount =  final_amount
-            .checked_mul(10u64.pow(usdc_decimals))
+            let final_amount = amountInDecimals.checked_sub(refund_amount).ok_or(ErrorCode::Overflow)?;
+            transfer_amount =  final_amount;
+            
+            // Update the loyalty points after refund (-100)
+            ctx.accounts.loyalty_card.loyalty_points = ctx
+            .accounts
+            .loyalty_card
+            .loyalty_points
+            .checked_sub(ctx.accounts.loyalty_card.threshold)
             .ok_or(ErrorCode::Overflow)?;
         }        
-  
+        
+        msg!("Transfer from: {}", ctx.accounts.customer_usdc_ata.key());
         let cpi_accounts = Transfer {
             from: ctx.accounts.customer_usdc_ata.to_account_info(),
             to: ctx.accounts.merchant_usdc_ata.to_account_info(),
@@ -227,10 +247,10 @@ fn init_token<'info>(
             system_program: system_program.to_account_info(),
             rent: rent.to_account_info(),
         },
-        signer,
+        signer
     );
 
-    create_metadata_accounts_v3(metadata_ctx, token_metadata, false, true, None)?;
+    create_metadata_accounts_v3(metadata_ctx, token_metadata, true, true, None)?;
 
     msg!("Token metadata created successfully.");
 
@@ -240,6 +260,7 @@ fn init_token<'info>(
 // Helper function to mint tokens to customer - restructured to avoid borrowing context
 fn mint_loyalty_token<'info>(
     customer_key: &Pubkey,
+    customer: &Signer<'info>,
     merchant_key: &Pubkey,
     mint: &InterfaceAccount<'info, Mint>,
     token_destination: &Account<'info, TokenAccount>,
@@ -253,6 +274,12 @@ fn mint_loyalty_token<'info>(
         &[*bump],
     ];
     let signer = &[&seeds[..]];
+
+    // Verify the token destination is owned by the customer
+    if token_destination.owner != customer.key() {
+        return Err(ErrorCode::ConstraintTokenOwner.into());
+    }
+
 
     let mint_ctx = CpiContext::new_with_signer(
         token_program.to_account_info(),
@@ -299,7 +326,7 @@ fn update_nft_uri<'info>(
 
     update_metadata_accounts_v2(
         update_ctx,
-        Some(mint.key()),
+        None,
         Some(DataV2 {
             name: "Loyalty Card NFT".to_string(),
             symbol: "BAGUETTE".to_string(),
@@ -431,6 +458,9 @@ pub enum ErrorCode {
 
     #[msg("Only the merchant who owns this card can close it.")]
     Unauthorized,
+
+    #[msg("Token destination account is not owned by the customer.")]
+    ConstraintTokenOwner,
 }
 
 pub mod constants {

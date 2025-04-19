@@ -47,6 +47,7 @@ tmp
 /rust/loyalty_program/node_modules
 /rust/test-ledger
 /rust/test-ledger-archive
+/anchor/target/debug
 
 # windsurf rules
 .windsurfrules
