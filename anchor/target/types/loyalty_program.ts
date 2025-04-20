@@ -513,6 +513,11 @@ export type LoyaltyProgram = {
       "code": 6001,
       "name": "unauthorized",
       "msg": "Only the merchant who owns this card can close it."
+    },
+    {
+      "code": 6002,
+      "name": "constraintTokenOwner",
+      "msg": "Token destination account is not owned by the customer."
     }
   ],
   "types": [

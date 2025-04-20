@@ -507,6 +507,11 @@
       "code": 6001,
       "name": "Unauthorized",
       "msg": "Only the merchant who owns this card can close it."
+    },
+    {
+      "code": 6002,
+      "name": "ConstraintTokenOwner",
+      "msg": "Token destination account is not owned by the customer."
     }
   ],
   "types": [
