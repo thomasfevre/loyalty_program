@@ -8,6 +8,8 @@ import {
 } from "@solana/spl-token";
 import { BN } from "bn.js";
 import bs58 from "bs58";
+import { config } from 'dotenv';
+config();
 
 describe("Loyalty Program Tests", () => {
   // Configure the client to use the local cluster
@@ -21,8 +23,8 @@ describe("Loyalty Program Tests", () => {
   const USDC_MINT = new anchor.web3.PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
 
   // Accounts
-  const merchantSecretKey = "";
-  const customerSecretKey = "";
+  const merchantSecretKey = process.env.MERCHANT_SECRET_KEY ?? '';
+  const customerSecretKey = process.env.CUSTOMER_SECRET_KEY ?? '';
   const customer = anchor.web3.Keypair.fromSecretKey(bs58.decode(customerSecretKey));
   const merchant = anchor.web3.Keypair.fromSecretKey(bs58.decode(merchantSecretKey));
 
