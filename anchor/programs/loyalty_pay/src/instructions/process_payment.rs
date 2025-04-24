@@ -130,11 +130,11 @@ fn handle_nft_upgrade<'info>(
                 bump,
             )?;
         }
-        (prev, curr) if prev <= 33 && curr > 33 => {
-            msg!("Upgrade to level Rare");
+        (prev, curr) if prev < 100 && curr >= 100 => {
+            msg!("Upgrade to level Legendary");
             update_nft_uri(
                 metadata,
-                METADATA_RARE,
+                METADATA_LEGENDARY,
                 token_metadata_program,
                 customer_key,
                 merchant_key,
@@ -154,11 +154,11 @@ fn handle_nft_upgrade<'info>(
                 bump,
             )?;
         }
-        (prev, curr) if prev < 100 && curr >= 100 => {
-            msg!("Upgrade to level Legendary");
+        (prev, curr) if prev <= 33 && curr > 33 => {
+            msg!("Upgrade to level Rare");
             update_nft_uri(
                 metadata,
-                METADATA_LEGENDARY,
+                METADATA_RARE,
                 token_metadata_program,
                 customer_key,
                 merchant_key,
@@ -166,6 +166,7 @@ fn handle_nft_upgrade<'info>(
                 bump,
             )?;
         }
+        
         _ => {}
     }
     Ok(())
