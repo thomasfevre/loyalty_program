@@ -37,7 +37,7 @@
     "dotenv": "^16.5.0",
     "jotai": "^2.12.1",
     "lucide-react": "^0.488.0",
-    "next": "15.2.4",
+    "next": "15.2.8",
     "next-safe-action": "^7.10.5",
     "qrcode.react": "^4.2.0",
     "react": "^18",
